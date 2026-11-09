@@ -35,7 +35,6 @@ import { readJson, writeJson } from './storage'
 
 const MATCH_OVERRIDES_KEY = 'dws.mock.matchOverrides.v2'
 const MATCH_EVENTS_KEY = 'dws.mock.matchEvents.v2'
-const MATCH_ROSTERS_KEY = 'dws.mock.matchRosters.v1'
 const PLAYERS_KEY = 'dws.mock.players.v2'
 const CHANGE_REQUESTS_KEY = 'dws.mock.changeRequests.v1'
 const REPORTS_KEY = 'dws.mock.reports.v1'
@@ -54,7 +53,6 @@ const newId = (prefix: string): string =>
 
 const matchOverrides = readJson<Record<string, Partial<Match>>>(MATCH_OVERRIDES_KEY, {})
 const storedEvents = readJson<Record<string, MatchEvent[]>>(MATCH_EVENTS_KEY, {})
-const storedRosters = readJson<MatchRoster[] | null>(MATCH_ROSTERS_KEY, null)
 const storedPlayers = readJson<Player[] | null>(PLAYERS_KEY, null)
 const storedRequests = readJson<TeamChangeRequest[] | null>(CHANGE_REQUESTS_KEY, null)
 const storedReports = readJson<PostMatchTeamReport[] | null>(REPORTS_KEY, null)
@@ -72,7 +70,6 @@ let events: MatchEvent[] = [
   ...seedEvents.filter((event) => !storedEvents[event.matchId]),
   ...Object.values(storedEvents).flat(),
 ]
-let matchRosters: MatchRoster[] = storedRosters ? copy(storedRosters) : copy(seedRosters)
 let changeRequests: TeamChangeRequest[] = storedRequests
   ? copy(storedRequests)
   : copy(seedChangeRequests)
@@ -115,10 +112,6 @@ function persistMatchEvents(matchId: string): void {
   writeJson(MATCH_EVENTS_KEY, current)
 }
 
-function persistMatchRosters(): void {
-  writeJson(MATCH_ROSTERS_KEY, matchRosters)
-}
-
 /**
  * Rosters for matches that have not finished are kept in sync with the live
  * player register, so jersey assignments and newly added players appear in the
@@ -126,7 +119,7 @@ function persistMatchRosters(): void {
  */
 function buildLiveRoster(matchId: string, teamId: string): MatchRoster[] {
   const match = matches.find((entry) => entry.id === matchId)
-  const base = matchRosters.filter(
+  const base = seedRosters.filter(
     (entry) => entry.matchId === matchId && entry.teamId === teamId,
   )
   if (!match || match.status === 'completed') return base
@@ -137,7 +130,7 @@ function buildLiveRoster(matchId: string, teamId: string): MatchRoster[] {
       player.isActive &&
       player.availability !== 'inactive',
   )
-  const currentRoster = squad.map((player, index) => {
+  return squad.map((player, index) => {
     const existing = base.find((entry) => entry.playerId === player.id)
     return {
       id: existing?.id ?? `${matchId}_${teamId}_${player.id}`,
@@ -149,14 +142,6 @@ function buildLiveRoster(matchId: string, teamId: string): MatchRoster[] {
       isActive: player.availability === 'active',
     }
   })
-  return [
-    ...currentRoster,
-    ...base.filter(
-      (entry) =>
-        entry.matchOnly &&
-        !currentRoster.some((current) => current.jerseyNumber === entry.jerseyNumber),
-    ),
-  ]
 }
 
 export const mockRepositories: Repositories = {
@@ -385,20 +370,6 @@ export const mockRepositories: Repositories = {
     async listByMatchAndTeam(matchId: string, teamId: string) {
       await delay()
       return copy(buildLiveRoster(matchId, teamId))
-    },
-    async addOpponentPlayer(roster: MatchRoster) {
-      await delay(50)
-      if (!roster.matchOnly) throw new Error('Opponent roster entries must be match-only.')
-      const duplicate = matchRosters.some(
-        (entry) =>
-          entry.matchId === roster.matchId &&
-          entry.teamId === roster.teamId &&
-          entry.jerseyNumber === roster.jerseyNumber,
-      )
-      if (duplicate) throw new Error('That opponent jersey number is already on this match roster.')
-      matchRosters = [...matchRosters, roster]
-      persistMatchRosters()
-      return copy(roster)
     },
   },
 

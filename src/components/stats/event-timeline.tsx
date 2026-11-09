@@ -25,6 +25,7 @@ export function buildPlayerMap(players: Player[]): Map<string, TimelinePlayer> {
 interface EventTimelineProps {
   events: MatchEvent[]
   players: Map<string, TimelinePlayer>
+  teamNames?: Map<string, string>
   onVoid?: (event: MatchEvent) => void
   emptyHint?: string
   className?: string
@@ -34,6 +35,7 @@ interface EventTimelineProps {
 export function EventTimeline({
   events,
   players,
+  teamNames,
   onVoid,
   emptyHint = 'Recorded actions will appear here.',
   className,
@@ -68,7 +70,9 @@ export function EventTimeline({
             </span>
             <div className="min-w-0 flex-1">
               <p className={cn('truncate text-xs font-medium text-ink', event.voided && 'line-through')}>
-                {player ? `${jerseyLabel(player.jerseyNumber)} ${player.name}` : 'Team'}
+                {player
+                  ? `${jerseyLabel(player.jerseyNumber)} ${player.name}`
+                  : teamNames?.get(event.teamId) ?? 'Team'}
               </p>
               <p className="truncate text-[11px] text-ink-muted">
                 {EVENT_LABELS[event.type]}
@@ -81,7 +85,7 @@ export function EventTimeline({
                 type="button"
                 onClick={() => onVoid(event)}
                 className="shrink-0 rounded-md border border-line p-1.5 text-ink-faint transition hover:border-danger/40 hover:text-danger"
-                aria-label={`Void ${EVENT_LABELS[event.type]} for ${player?.name ?? 'team'}`}
+                aria-label={`Void ${EVENT_LABELS[event.type]} for ${player?.name ?? teamNames?.get(event.teamId) ?? 'team'}`}
                 title="Void this event"
               >
                 <Undo2 className="h-3.5 w-3.5" />

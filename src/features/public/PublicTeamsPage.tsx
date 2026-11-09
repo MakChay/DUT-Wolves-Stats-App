@@ -30,7 +30,7 @@ function TeamsContent({
       <PageHeader
         eyebrow="Teams"
         title={`${genderLabel(gender)} teams`}
-        description="Squads competing in the current season. Only players who have opted in to a public profile are listed."
+        description="DUT Wolves men's and women's squads. Only players who have opted in to a public profile are listed."
         actions={<PublicTeamSwitch gender={gender} onChange={setGender} />}
       />
 

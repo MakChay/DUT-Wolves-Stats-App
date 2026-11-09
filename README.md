@@ -18,7 +18,7 @@ The platform helps the team manage:
 - Coach dashboard with analytics and change requests
 - Player dashboard for personal stats and history
 - Admin management for teams, users, competitions, and matches
-- Courtside scoring records event stats for DUT players and match-only opponent jersey entries; opponent entries do not become season-roster players
+- Courtside scoring records individual stats only for DUT Wolves players and team-level scores for opponents; opponents are fixture references, not squads managed by the app
 - Team photos used in the public design are bundled static assets; new media publishing is archived
 - Public pages link to the official Instagram profile, [@dut_wolves](https://www.instagram.com/dut_wolves/)
 - Open Graph and Twitter/X metadata use a branded 1200×630 share image at `public/social-card.jpg`
@@ -95,4 +95,4 @@ npm run build
 
 ## Notes
 
-This application is intentionally built around a sports domain model and multi-role workflow design. When Firebase is configured and `VITE_DATA_MODE` is not set to `mock`, it uses Firestore repositories; otherwise, it uses mock data. A configured Firebase mode is not, by itself, proof that production permissions, data, or match-day procedures have been validated.
+This application is intentionally built around DUT Wolves basketball operations. Opponents exist to define fixtures and record team scores/results against DUT; the app does not manage their rosters, players, or player statistics. When Firebase is configured and `VITE_DATA_MODE` is not set to `mock`, it uses Firestore repositories; otherwise, it uses mock data. A configured Firebase mode is not, by itself, proof that production permissions, data, or match-day procedures have been validated.

@@ -1,17 +1,17 @@
 import {
   createContext,
   useContext,
+  useCallback,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react'
-import type { Team } from '@/types/domain'
+import { isDutTeamId, type Team } from '@/types/domain'
 import { repositories } from '@/services/repositories'
 import { useAuth } from '@/features/auth/AuthContext'
 
 const STORAGE_KEY = 'dws.teamScope'
-const DUT_TEAM_IDS = new Set(['team-men', 'team-women'])
 
 interface TeamScopeValue {
   teams: Team[]
@@ -40,10 +40,11 @@ export function TeamScopeProvider({ children }: { children: ReactNode }) {
     }
     repositories.teams.list().then((rows) => {
       if (cancelled) return
+      const dutTeams = rows.filter((team) => isDutTeamId(team.id))
       const scoped =
         user.role === 'admin'
-          ? rows.filter((team) => DUT_TEAM_IDS.has(team.id))
-          : rows.filter((team) => user.teamIds.includes(team.id))
+          ? dutTeams
+          : dutTeams.filter((team) => user.teamIds.includes(team.id))
       setTeams(scoped)
       const stored = window.localStorage.getItem(STORAGE_KEY)
       const valid = scoped.find((team) => team.id === stored)
@@ -55,15 +56,16 @@ export function TeamScopeProvider({ children }: { children: ReactNode }) {
     }
   }, [user])
 
-  const setTeamId = (id: string) => {
+  const setTeamId = useCallback((id: string) => {
+    if (!teams.some((team) => team.id === id)) return
     setTeamIdState(id)
     window.localStorage.setItem(STORAGE_KEY, id)
-  }
+  }, [teams])
 
   const value = useMemo<TeamScopeValue>(() => {
     const team = teams.find((entry) => entry.id === teamId) ?? null
     return { teams, teamId, team, setTeamId, loading }
-  }, [teams, teamId, loading])
+  }, [teams, teamId, setTeamId, loading])
 
   return <TeamScopeContext.Provider value={value}>{children}</TeamScopeContext.Provider>
 }

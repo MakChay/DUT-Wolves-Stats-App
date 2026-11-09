@@ -54,27 +54,18 @@ function RosterView({ analytics }: { analytics: TeamAnalytics }) {
   const { data, loading, error } = useAsync<RosterData>(
     async () => {
       if (!matchId) return { rosters: [], players: [] }
-      const [rosters, teamPlayers, publicPlayers] = await Promise.all([
+      const [rosters, players] = await Promise.all([
         repositories.rosters.listByMatchAndTeam(matchId, analytics.team.id, true),
         repositories.players.listByTeam(analytics.team.id),
-        repositories.players.listPublic(),
       ])
-      const players = [
-        ...teamPlayers,
-        ...publicPlayers.filter((player) => player.teamId !== analytics.team.id),
-      ]
       return { rosters, players }
     },
     [matchId],
   )
 
   const match = analytics.matches.find((entry) => entry.id === matchId)
-  const opponent = match
-    ? analytics.opponentById.get(
-        match.homeTeamId === analytics.team.id ? match.awayTeamId : match.homeTeamId,
-      )
-    : null
-
+  const rows = sortRoster(data?.rosters ?? [], data?.players ?? [])
+  const starters = rows.filter((row) => row.entry.isStarter)
   const options = analytics.matches.map((entry) => {
     const opposite = analytics.opponentById.get(
       entry.homeTeamId === analytics.team.id ? entry.awayTeamId : entry.homeTeamId,
@@ -103,82 +94,67 @@ function RosterView({ analytics }: { analytics: TeamAnalytics }) {
       </Card>
 
       {loading ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <SkeletonCard lines={8} />
-          <SkeletonCard lines={8} />
-        </div>
+        <SkeletonCard lines={8} />
       ) : error ? (
         <EmptyState icon={ClipboardList} title="Roster could not be loaded" description={error} />
       ) : !match ? (
         <EmptyState
           icon={ClipboardList}
           title="No match selected"
-          description="Choose a match to review its registered roster and starting five."
+          description="Choose a DUT Wolves fixture to review the registered roster and starting five."
         />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {[analytics.team, opponent].map((team) => {
-            if (!team) return null
-            const entries = data?.rosters.filter((entry) => entry.teamId === team.id) ?? []
-            const rows = sortRoster(entries, data?.players ?? [])
-            const starters = rows.filter((row) => row.entry.isStarter)
-            return (
-              <Card key={team.id}>
-                <CardHeader>
-                  <div>
-                    <CardTitle>{team.name}</CardTitle>
-                    <p className="mt-0.5 text-xs text-ink-muted">
-                      {rows.length} registered · {starters.length} starters
-                    </p>
-                  </div>
-                  <Badge tone={team.id === analytics.team.id ? 'accent' : 'neutral'}>
-                    {team.id === analytics.team.id ? 'Our team' : 'Opponent'}
-                  </Badge>
-                </CardHeader>
-                <CardContent className="pt-3">
-                  {rows.length === 0 ? (
-                    <p className="rounded-control border border-dashed border-line px-3 py-6 text-center text-xs text-ink-faint">
-                      No players registered for this match.
-                    </p>
-                  ) : (
-                    <ul className="space-y-1">
-                      {rows.map(({ entry, player }) => (
-                        <li
-                          key={entry.id}
-                          className="flex items-center gap-2.5 rounded-control border border-line/70 px-2 py-1.5"
-                        >
-                          <PlayerAvatar player={player} size="sm" />
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-medium text-ink">
-                              {playerDisplayName(player)}
-                            </p>
-                            <p className="text-[10px] uppercase tracking-wider text-ink-faint">
-                              {jerseyLabel(player.jerseyNumber)}
-                              {player.position ? ` · ${player.position}` : ''}
-                              {player.heightCm ? ` · ${player.heightCm} cm` : ''}
-                            </p>
-                          </div>
-                          {entry.isStarter ? <Badge tone="accent">Starter</Badge> : <Badge>Bench</Badge>}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <p className="mt-3 flex items-center justify-between gap-2 text-[11px] leading-relaxed text-ink-faint">
-                    Match roster snapshots stay read-only. Season roster details are managed on the
-                    Players page.
-                    <Link
-                      to="/manager/players"
-                      className="inline-flex shrink-0 items-center gap-1 font-semibold text-accent hover:underline"
-                    >
-                      <Pencil className="h-3 w-3" aria-hidden="true" />
-                      Edit roster
-                    </Link>
-                  </p>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>{analytics.team.name}</CardTitle>
+              <p className="mt-0.5 text-xs text-ink-muted">
+                {rows.length} registered · {starters.length} starters
+              </p>
+            </div>
+            <Badge tone="accent">DUT Wolves</Badge>
+          </CardHeader>
+          <CardContent className="pt-3">
+            {rows.length === 0 ? (
+              <p className="rounded-control border border-dashed border-line px-3 py-6 text-center text-xs text-ink-faint">
+                No DUT players are registered for this match.
+              </p>
+            ) : (
+              <ul className="space-y-1">
+                {rows.map(({ entry, player }) => (
+                  <li
+                    key={entry.id}
+                    className="flex items-center gap-2.5 rounded-control border border-line/70 px-2 py-1.5"
+                  >
+                    <PlayerAvatar player={player} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-medium text-ink">
+                        {playerDisplayName(player)}
+                      </p>
+                      <p className="text-[10px] uppercase tracking-wider text-ink-faint">
+                        {jerseyLabel(player.jerseyNumber)}
+                        {player.position ? ` · ${player.position}` : ''}
+                        {player.heightCm ? ` · ${player.heightCm} cm` : ''}
+                      </p>
+                    </div>
+                    {entry.isStarter ? <Badge tone="accent">Starter</Badge> : <Badge>Bench</Badge>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-3 flex items-center justify-between gap-2 text-[11px] leading-relaxed text-ink-faint">
+              Match roster snapshots stay read-only. Season roster details are managed on the
+              Players page.
+              <Link
+                to="/manager/players"
+                className="inline-flex shrink-0 items-center gap-1 font-semibold text-accent hover:underline"
+              >
+                <Pencil className="h-3 w-3" aria-hidden="true" />
+                Edit roster
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
       )}
     </div>
   )
@@ -192,7 +168,7 @@ export function ManagerRostersPage() {
           <PageHeader
             eyebrow="Match day"
             title="Rosters"
-            description="Review the registered squad and starting five for any fixture. Every match keeps its own roster snapshot."
+            description="Review the DUT Wolves squad and starting five for each fixture. Opponents have no player roster in this app."
           />
           <RosterView analytics={analytics} />
         </div>

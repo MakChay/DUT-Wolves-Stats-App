@@ -37,6 +37,12 @@ export interface Team {
   homeVenue?: string
 }
 
+export const DUT_TEAM_IDS = ['team-men', 'team-women'] as const
+
+export function isDutTeamId(teamId: string | null | undefined): boolean {
+  return DUT_TEAM_IDS.some((id) => id === teamId)
+}
+
 export interface TeamMembership {
   id: string
   userId: string
@@ -219,8 +225,6 @@ export interface MatchRoster {
   jerseyNumber: number | null
   isStarter: boolean
   isActive: boolean
-  /** Opponent jersey entry created for this match; not a season player record. */
-  matchOnly?: boolean
 }
 
 export type MatchEventType =
@@ -242,6 +246,7 @@ export type MatchEventType =
   | 'PERIOD_START'
   | 'PERIOD_END'
   | 'MATCH_END'
+  | 'TEAM_SCORE'
 
 export interface MatchEventData {
   id: string
@@ -637,6 +642,7 @@ export const EVENT_LABELS: Record<MatchEventType, string> = {
   PERIOD_START: 'Period start',
   PERIOD_END: 'Period end',
   MATCH_END: 'Match ended',
+  TEAM_SCORE: 'Team score recorded',
 }
 
 export const EVENT_SHORT_LABELS: Record<MatchEventType, string> = {
@@ -658,6 +664,7 @@ export const EVENT_SHORT_LABELS: Record<MatchEventType, string> = {
   PERIOD_START: 'Q',
   PERIOD_END: 'END',
   MATCH_END: 'FT',
+  TEAM_SCORE: 'PTS',
 }
 
 export const SHOOTING_EVENTS: MatchEventType[] = [

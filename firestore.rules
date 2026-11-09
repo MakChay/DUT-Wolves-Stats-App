@@ -19,12 +19,18 @@ service cloud.firestore {
       return signedIn() && profile().role in ['admin', 'manager'];
     }
 
+    function isDutTeam(teamId) {
+      return teamId in ['team-men', 'team-women'];
+    }
+
     function managesTeam(teamId) {
-      return isManager() && (isAdmin() || teamId in profile().teamIds);
+      return isDutTeam(teamId)
+        && isManager()
+        && (isAdmin() || teamId in profile().teamIds);
     }
 
     function isTeamMember(teamId) {
-      return signedIn() && (
+      return isDutTeam(teamId) && signedIn() && (
         isAdmin()
         || teamId in profile().teamIds
         || (
@@ -43,62 +49,81 @@ service cloud.firestore {
     }
 
     function canManageMatch(matchData) {
-      return isAdmin() || (
-        signedIn()
-        && profile().role == 'manager'
+      return (isDutTeam(matchData.homeTeamId) || isDutTeam(matchData.awayTeamId))
         && (
-          matchData.homeTeamId in profile().teamIds
-          || matchData.awayTeamId in profile().teamIds
-        )
+          isAdmin()
+          || (
+            signedIn()
+            && profile().role == 'manager'
+            && (
+              (isDutTeam(matchData.homeTeamId) && matchData.homeTeamId in profile().teamIds)
+              || (isDutTeam(matchData.awayTeamId) && matchData.awayTeamId in profile().teamIds)
+            )
+          )
       );
     }
 
     function canReadPrivateMatchEvents(matchId) {
       let matchData = get(/databases/$(database)/documents/matches/$(matchId)).data;
-      return isAdmin() || (
-        signedIn()
-        && profile().role in ['manager', 'coach']
+      return (isDutTeam(matchData.homeTeamId) || isDutTeam(matchData.awayTeamId))
         && (
-          matchData.homeTeamId in profile().teamIds
-          || matchData.awayTeamId in profile().teamIds
-        )
+          isAdmin()
+          || (
+            signedIn()
+            && profile().role in ['manager', 'coach']
+            && (
+              isTeamMember(matchData.homeTeamId)
+              || isTeamMember(matchData.awayTeamId)
+            )
+          )
       );
     }
 
     function canManageRoster(rosterData) {
       let matchData = get(/databases/$(database)/documents/matches/$(rosterData.matchId)).data;
-      return canManageMatch(matchData)
-        && rosterData.teamId in [matchData.homeTeamId, matchData.awayTeamId]
-        && (
-          managesTeam(rosterData.teamId)
-          || rosterData.get('matchOnly', false) == true
-        );
+      return managesTeam(rosterData.teamId)
+        && canManageMatch(matchData)
+        && rosterData.teamId in [matchData.homeTeamId, matchData.awayTeamId];
     }
 
     function canManageMatchEvent(eventData) {
       let matchData = get(/databases/$(database)/documents/matches/$(eventData.matchId)).data;
       return canManageMatch(matchData)
-        && eventData.teamId in [matchData.homeTeamId, matchData.awayTeamId];
+        && eventData.teamId in [matchData.homeTeamId, matchData.awayTeamId]
+        && (
+          isDutTeam(eventData.teamId)
+          || (
+            eventData.type == 'TEAM_SCORE'
+            && !('playerId' in eventData)
+            && eventData.points in [1, 2, 3]
+          )
+        );
     }
 
-    function canReadMatchRoster(matchId) {
+    function canReadMatchRoster(matchId, teamId) {
       let matchData = get(/databases/$(database)/documents/matches/$(matchId)).data;
-      return isAdmin()
-        || isTeamMember(matchData.homeTeamId)
-        || isTeamMember(matchData.awayTeamId);
+      return isDutTeam(teamId)
+        && (
+          isAdmin()
+          || isTeamMember(matchData.homeTeamId)
+          || isTeamMember(matchData.awayTeamId)
+        );
     }
 
     function canReadPlayer(playerId, playerData) {
-      return isAdmin()
-        || (
-          signedIn()
-          && profile().role in ['manager', 'coach']
-          && playerData.teamId in profile().teamIds
-        )
-        || (
-          signedIn()
-          && profile().role == 'player'
-          && profile().playerId == playerId
+      return isDutTeam(playerData.teamId)
+        && (
+          isAdmin()
+          || (
+            signedIn()
+            && profile().role in ['manager', 'coach']
+            && playerData.teamId in profile().teamIds
+          )
+          || (
+            signedIn()
+            && profile().role == 'player'
+            && profile().playerId == playerId
+          )
         );
     }
 
@@ -202,7 +227,7 @@ service cloud.firestore {
 
     match /teams/{teamId} {
       allow read: if signedIn() || resource.data.publicVisible == true;
-      allow write: if isAdmin();
+      allow write: if isAdmin() && isDutTeam(teamId);
     }
 
     match /players/{playerId} {
@@ -243,7 +268,7 @@ service cloud.firestore {
     }
 
     match /matchRosters/{rosterId} {
-      allow read: if canReadMatchRoster(resource.data.matchId);
+      allow read: if canReadMatchRoster(resource.data.matchId, resource.data.teamId);
       allow create: if canManageRoster(request.resource.data);
       allow update: if canManageRoster(resource.data)
         && canManageRoster(request.resource.data);
@@ -290,6 +315,7 @@ service cloud.firestore {
       allow read: if canReadChangeRequest(resource.data);
       allow create: if signedIn()
         && request.resource.data.submittedByUserId == request.auth.uid
+        && isDutTeam(request.resource.data.teamId)
         && request.resource.data.teamId in profile().teamIds;
       allow update: if managesTeam(resource.data.teamId)
         && managesTeam(request.resource.data.teamId)

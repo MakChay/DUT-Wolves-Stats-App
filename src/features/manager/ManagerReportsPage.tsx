@@ -38,35 +38,29 @@ interface ReportData {
 }
 
 async function loadReport(teamId: string): Promise<ReportData> {
-  const [matches, teams, teamPlayers, publicPlayers, reports] = await Promise.all([
+  const [matches, teams, teamPlayers, reports] = await Promise.all([
     repositories.matches.listByTeam(teamId),
     repositories.teams.list(),
     repositories.players.listByTeam(teamId),
-    repositories.players.listPublic(),
     repositories.reports.listByTeam(teamId),
   ])
-  const players = [
-    ...teamPlayers,
-    ...publicPlayers.filter((player) => player.teamId !== teamId),
-  ]
   const completed = matches
     .filter((match) => match.status === 'completed')
     .sort((a, b) => b.tipoff.localeCompare(a.tipoff))
   const matchId = completed[0]?.id ?? ''
   const perMatch = await Promise.all(
     completed.map(async (match) => {
-      const [homeRoster, awayRoster, events] = await Promise.all([
-        repositories.rosters.listByMatchAndTeam(match.id, match.homeTeamId),
-        repositories.rosters.listByMatchAndTeam(match.id, match.awayTeamId),
+      const [rosters, events] = await Promise.all([
+        repositories.rosters.listByMatchAndTeam(match.id, teamId),
         repositories.events.listByMatch(match.id),
       ])
-      return { rosters: [...homeRoster, ...awayRoster], events }
+      return { rosters, events }
     }),
   )
   return {
     matches: completed,
     teams,
-    players,
+    players: teamPlayers,
     rosters: perMatch.flatMap((entry) => entry.rosters),
     events: perMatch.flatMap((entry) => entry.events),
     reports,

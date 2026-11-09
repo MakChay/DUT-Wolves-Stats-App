@@ -107,6 +107,9 @@ function applyEvent(stats: PlayerGameStats | TeamGameStats, event: MatchEventDat
     case 'FOUL':
       stats.pf += 1
       break
+    case 'TEAM_SCORE':
+      stats.points += event.points ?? 0
+      break
     default:
       break
   }

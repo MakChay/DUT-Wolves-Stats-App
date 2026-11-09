@@ -92,9 +92,10 @@ The programme currently needs a consistent source of truth for team data, match 
 - Disabled or missing profiles must be blocked from access.
 
 ### 6.2 Team and user management
-- Admins must manage teams and user relationships.
-- A user can belong to one or more team contexts.
+- Admins manage the two DUT Wolves squads and their user relationships.
+- A user can belong to one or both DUT squad contexts.
 - Team selection must persist for the current user.
+- Opponent team records exist only as fixture references and are not operational squads.
 
 ### 6.3 Player management
 - Players must have profile information including team, jersey number, position, bio, and availability status.
@@ -104,12 +105,14 @@ The programme currently needs a consistent source of truth for team data, match 
 ### 6.4 Match and event tracking
 - Matches must support scheduled, live, paused, completed, and postponed states.
 - Match events must capture basketball actions such as shots, turnovers, assists, rebounds, fouls, and substitutions.
-- Managers must be able to record both DUT and opponent player events; opponent jersey entries belong only to that match and must not alter DUT player or season records.
+- Managers record individual events only for DUT Wolves players.
+- Opponent scores are recorded at team level (one, two, or three points); opponent player rosters and individual statistics are out of scope.
 - Match records must support history and corrections without deleting earlier records.
 
 ### 6.5 Public content
-- The public site must show live scores, fixtures, results, standings, team pages, and player pages.
-- Public pages must use gender-specific team views.
+- The public site must show DUT live scores, DUT fixtures/results against opponents, DUT team standings, and DUT team/player pages.
+- Public team and player pages must include only DUT Wolves squads and opted-in DUT players; opponents may appear only as match counterparts and in score/result displays.
+- Public pages must use gender-specific DUT squad views.
 - Public pages link to the official DUT Wolves Instagram account, @dut_wolves.
 - The app does not include a public gallery, media studio, or Instagram post feed; app photography is limited to bundled static assets and existing player portrait URLs.
 

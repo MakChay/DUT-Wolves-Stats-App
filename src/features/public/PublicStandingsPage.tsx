@@ -27,7 +27,7 @@ function StandingsContent({
       <PageHeader
         eyebrow="Standings"
         title={`${genderLabel(gender)} standings`}
-        description="Competition table computed from completed fixtures. Win percentage, then points difference, then points scored."
+        description="DUT Wolves results against opponents, calculated from completed fixtures."
         actions={<PublicTeamSwitch gender={gender} onChange={setGender} />}
       />
 
@@ -100,8 +100,8 @@ function StandingsContent({
 
           <div className="grid gap-3 sm:grid-cols-3">
             {[
-              ['Matches played', standings.reduce((total, row) => total + row.played, 0) / 2],
-              ['Highest score', Math.max(...standings.map((row) => row.pointsFor))],
+              ['Matches played', standings.reduce((total, row) => total + row.played, 0)],
+              ['DUT points scored', Math.max(...standings.map((row) => row.pointsFor))],
               ['Best differential', Math.max(...standings.map((row) => row.diff))],
             ].map(([label, value]) => (
               <div key={String(label)} className="rounded-card border border-line bg-surface px-4 py-3">

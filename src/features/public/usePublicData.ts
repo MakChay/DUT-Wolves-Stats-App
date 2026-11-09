@@ -8,6 +8,7 @@ import type {
   PublicPlayer,
   Team,
 } from '@/types/domain'
+import { isDutTeamId } from '@/types/domain'
 import {
   aggregate,
   derivePlayerGameStats,
@@ -44,14 +45,20 @@ export interface PublicData {
   competitionById: Map<string, Competition>
 }
 
-type PublicDataBase = Pick<PublicData, 'teams' | 'players' | 'competitions' | 'media'>
+type PublicDataBase = Pick<PublicData, 'teams' | 'players' | 'competitions' | 'media'> & {
+  allTeams?: Team[]
+}
 
 function derivePublicData(
   base: PublicDataBase,
   matches: Match[],
   eventsByMatch: Map<string, MatchEventData[]>,
 ): PublicData {
-  const publicMatches = matches.filter((match) => match.publicVisible)
+  const publicMatches = matches.filter(
+    (match) =>
+      match.publicVisible &&
+      (isDutTeamId(match.homeTeamId) || isDutTeamId(match.awayTeamId)),
+  )
   const completed = publicMatches.filter((match) => match.status === 'completed')
   const completedByTeam = new Map<string, Match[]>()
   completed.forEach((match) => {
@@ -81,7 +88,7 @@ function derivePublicData(
     recent: completed.sort((a, b) => b.tipoff.localeCompare(a.tipoff)),
     eventsByMatch,
     topScorers,
-    teamById: new Map(base.teams.map((team) => [team.id, team])),
+    teamById: new Map((base.allTeams ?? base.teams).map((team) => [team.id, team])),
     playerById: new Map(base.players.map((player) => [player.id, player])),
     competitionById: new Map(base.competitions.map((competition) => [competition.id, competition])),
   }
@@ -89,7 +96,7 @@ function derivePublicData(
 
 async function loadPublicData(): Promise<PublicData> {
   // Public pages only ever call sanitised, publicly readable repositories.
-  const [teams, publicPlayersRaw, matches, competitions, media] = await Promise.all([
+  const [allTeams, publicPlayersRaw, matches, competitions, media] = await Promise.all([
     repositories.teams.listPublic(),
     repositories.players.listPublic(),
     repositories.matches.listPublic(),
@@ -107,13 +114,18 @@ async function loadPublicData(): Promise<PublicData> {
   }
 
   const publicPlayers: PublicPlayer[] = publicPlayersRaw
-    .filter((player) => player.publicVisible)
+    .filter((player) => player.publicVisible && isDutTeamId(player.teamId))
     .map((player) => ({
       ...player,
       photoUrl: player.photoUrl ?? portraitByPlayer.get(player.id),
     }))
 
-  const publicMatches = matches.filter((match) => match.publicVisible)
+  const publicTeams = allTeams.filter((team) => isDutTeamId(team.id))
+  const publicMatches = matches.filter(
+    (match) =>
+      match.publicVisible &&
+      (isDutTeamId(match.homeTeamId) || isDutTeamId(match.awayTeamId)),
+  )
   const eventLists = await Promise.all(
     publicMatches.map((match) => repositories.events.listPublicByMatch(match.id)),
   )
@@ -123,10 +135,11 @@ async function loadPublicData(): Promise<PublicData> {
 
   return derivePublicData(
     {
-      teams,
+      teams: publicTeams,
       players: publicPlayers,
       competitions,
       media: publishedMedia,
+      allTeams,
     },
     publicMatches,
     eventsByMatch,
@@ -172,7 +185,11 @@ export function usePublicData() {
     const stopMatches = repositories.matches.subscribePublic(
       (nextMatches) => {
         if (!active) return
-        matches = nextMatches
+        matches = nextMatches.filter(
+          (match) =>
+            match.publicVisible &&
+            (isDutTeamId(match.homeTeamId) || isDutTeamId(match.awayTeamId)),
+        )
         generation += 1
         const currentGeneration = generation
         setStreamedData((current) =>

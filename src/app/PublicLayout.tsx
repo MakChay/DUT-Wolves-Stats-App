@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { publicNav } from '@/app/navigation'
 import { BrandMark } from '@/components/brand/brand-mark'
+import { WolfWatermark } from '@/components/brand/wolf-watermark'
 import { Button } from '@/components/ui/button'
 import { homePathForRole, useAuth } from '@/features/auth/AuthContext'
 import { InstallAppButton } from '@/features/pwa/InstallAppButton'
@@ -104,8 +105,11 @@ export function PublicLayout() {
         ) : null}
       </header>
 
-      <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        <Outlet />
+      <main className="relative isolate mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <WolfWatermark opacity={0.035} />
+        <div className="relative z-10">
+          <Outlet />
+        </div>
       </main>
 
       <footer className="border-t border-line bg-sidebar">

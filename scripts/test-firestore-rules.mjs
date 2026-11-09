@@ -136,6 +136,11 @@ async function seedFixtures() {
     'manager',
     ['team-women'],
   )
+  accounts.managerOpponent = await createAccount(
+    'manager-opponent@example.test',
+    'manager',
+    ['opponent'],
+  )
   accounts.playerMen = await createAccount(
     'player-men@example.test',
     'player',
@@ -178,11 +183,23 @@ async function seedFixtures() {
       },
     ],
     ['players/player-women', { teamId: 'team-women', studentNumber: 'private-women' }],
+    ['players/player-opponent', { teamId: 'opponent', jerseyNumber: 4, numberOnly: true }],
     ['publicPlayers/player-men', { teamId: 'team-men', firstName: 'Player' }],
     ['publicPlayers/player-women', { teamId: 'team-women', firstName: 'Player' }],
     ['matches/match-men', match('team-men')],
     ['matches/match-women', match('team-women')],
     ['matches/match-men-public', match('team-men', true)],
+    [
+      'matchRosters/roster-opponent',
+      {
+        matchId: 'match-men',
+        teamId: 'opponent',
+        playerId: 'player-opponent',
+        jerseyNumber: 4,
+        isStarter: false,
+        isActive: true,
+      },
+    ],
     [
       'matchEvents/event-men',
       {
@@ -301,6 +318,14 @@ try {
     getDoc(doc(firestore, 'matchEvents/event-women')),
     'Manager cannot read full event for another match',
   )
+  await expectDenied(
+    getDoc(doc(firestore, 'players/player-opponent')),
+    'Manager cannot read an opponent player',
+  )
+  await expectDenied(
+    getDoc(doc(firestore, 'matchRosters/roster-opponent')),
+    'Manager cannot read an opponent roster',
+  )
   await expectAllowed(
     getDocs(
       query(collection(firestore, 'reportStatuses'), where('matchId', '==', 'match-men')),
@@ -320,33 +345,65 @@ try {
   )
   await expectAllowed(deleteDoc(doc(firestore, 'players/player-men-new')), 'Manager deletes own-team player')
   await expectDenied(setDoc(doc(firestore, 'players/player-women-new'), rosterPlayer('team-women')), 'Manager cannot add other-team player')
-  await expectDenied(deleteDoc(doc(firestore, 'players/player-women')), 'Manager cannot delete other-team player')
-  await expectDenied(setDoc(doc(firestore, 'competitions/manager-test'), competitionDoc()), 'Manager cannot create competitions')
+  await expectDenied(
+    setDoc(doc(firestore, 'players/player-opponent-new'), rosterPlayer('opponent')),
+    'Manager cannot add an opponent player',
+  )
   await expectAllowed(
-    setDoc(doc(firestore, 'matchRosters/match-men-opponent-12'), {
+    setDoc(doc(firestore, 'matchEvents/opponent-score'), {
       matchId: 'match-men',
       teamId: 'opponent',
-      playerId: 'match-men-opponent-jersey-12',
-      jerseyNumber: 12,
-      isStarter: false,
-      isActive: true,
-      matchOnly: true,
+      clientEventId: 'opponent-score-client',
+      type: 'TEAM_SCORE',
+      period: 1,
+      clockSeconds: 500,
+      createdAt: '2026-11-30T10:01:00.000Z',
+      points: 3,
+      recordedBy: accounts.managerMen.uid,
     }),
-    'Manager records an opponent jersey for their match only',
+    'Manager records an opponent team score',
   )
   await expectDenied(
-    setDoc(doc(firestore, 'matchRosters/match-women-opponent-12'), {
-      matchId: 'match-women',
+    setDoc(doc(firestore, 'matchEvents/opponent-player-score'), {
+      matchId: 'match-men',
       teamId: 'opponent',
-      playerId: 'match-women-opponent-jersey-12',
-      jerseyNumber: 12,
-      isStarter: false,
-      isActive: true,
-      matchOnly: true,
+      playerId: 'player-opponent',
+      clientEventId: 'opponent-player-score-client',
+      type: 'TEAM_SCORE',
+      period: 1,
+      clockSeconds: 500,
+      createdAt: '2026-11-30T10:01:01.000Z',
+      points: 3,
+      recordedBy: accounts.managerMen.uid,
     }),
-    'Manager cannot add opponent roster entries to another team match',
+    'Manager cannot record an opponent player event',
+  )
+  await expectDenied(deleteDoc(doc(firestore, 'players/player-women')), 'Manager cannot delete other-team player')
+  await expectDenied(setDoc(doc(firestore, 'competitions/manager-test'), competitionDoc()), 'Manager cannot create competitions')
+
+  await signOut(auth)
+  await signInWithEmailAndPassword(auth, accounts.managerOpponent.email, 'Local-rule-test-123!')
+  await expectDenied(
+    getDoc(doc(firestore, 'matchEvents/event-men')),
+    'Opponent-assigned manager cannot read DUT match events',
+  )
+  await expectDenied(
+    setDoc(doc(firestore, 'matchEvents/legacy-opponent-score'), {
+      matchId: 'match-men',
+      teamId: 'opponent',
+      clientEventId: 'legacy-opponent-score-client',
+      type: 'TEAM_SCORE',
+      period: 1,
+      clockSeconds: 500,
+      createdAt: '2026-11-30T10:01:02.000Z',
+      points: 2,
+      recordedBy: accounts.managerOpponent.uid,
+    }),
+    'Opponent-assigned manager cannot score a DUT match',
   )
 
+  await signOut(auth)
+  await signInWithEmailAndPassword(auth, accounts.managerMen.email, 'Local-rule-test-123!')
   const publicPlayerBatch = writeBatch(firestore)
   publicPlayerBatch.update(doc(firestore, 'players/player-men'), {
     firstName: 'Updated',
@@ -509,7 +566,15 @@ try {
     updateDoc(doc(firestore, 'competitions/admin-test'), { publicVisible: true }),
     'Admin publishes competitions',
   )
-  await expectAllowed(setDoc(doc(firestore, 'players/admin-added'), rosterPlayer('team-women')), 'Admin adds players to any team')
+  await expectAllowed(setDoc(doc(firestore, 'players/admin-added'), rosterPlayer('team-women')), 'Admin adds a DUT player')
+  await expectDenied(
+    setDoc(doc(firestore, 'players/admin-opponent-added'), rosterPlayer('opponent')),
+    'Admin cannot add an opponent player',
+  )
+  await expectDenied(
+    setDoc(doc(firestore, 'teams/opponent'), { name: 'Opponent University' }),
+    'Admin cannot manage opponent teams',
+  )
 
   console.log('Firestore rules checks passed.')
 } finally {

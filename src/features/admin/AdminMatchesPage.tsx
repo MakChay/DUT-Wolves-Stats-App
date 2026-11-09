@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { useAdminData } from '@/features/admin/useAdminData'
 import { matchScore } from '@/services/analytics/stats'
 import { formatDate, formatTime } from '@/utils/format'
+import { isDutTeamId } from '@/types/domain'
 
 export function AdminMatchesPage() {
   const { data, loading, error, reload } = useAdminData()
@@ -43,6 +44,7 @@ export function AdminMatchesPage() {
   if (!data) return null
 
   const shown = [...data.matches]
+    .filter((match) => isDutTeamId(match.homeTeamId) || isDutTeamId(match.awayTeamId))
     .filter((match) => status === 'all' || match.status === status)
     .sort((a, b) => b.tipoff.localeCompare(a.tipoff))
 
@@ -75,8 +77,8 @@ export function AdminMatchesPage() {
     <div className="space-y-5">
       <PageHeader
         eyebrow="Matches"
-        title="All matches"
-        description="Review imported fixtures before publishing them to the public schedule."
+        title="DUT Wolves matches"
+        description="Review and publish fixtures involving a DUT Wolves squad. Opponents remain fixture references only."
       />
 
       <Card>

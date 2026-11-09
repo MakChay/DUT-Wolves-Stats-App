@@ -27,10 +27,9 @@ const db = getFirestore(app)
 
 try {
   await signInWithEmailAndPassword(auth, email, password)
-  const [teams, matches, players, competition, season] = await Promise.all([
+  const [teams, matches, competition, season] = await Promise.all([
     getDocs(collection(db, 'teams')),
     getDocs(query(collection(db, 'matches'), where('competitionId', '==', 'comp-ussa-wits-2026-draft'))),
-    getDocs(query(collection(db, 'players'), where('numberOnly', '==', true))),
     getDoc(doc(db, 'competitions', 'comp-ussa-wits-2026-draft')),
     getDoc(doc(db, 'seasons', 'season-ussa-wits-2026')),
   ])
@@ -41,7 +40,6 @@ try {
 
   console.log(`Project: ${env.VITE_FIREBASE_PROJECT_ID}`)
   console.log(`Teams: ${teams.size}`)
-  console.log(`Number-only opponent players: ${players.size}`)
   console.log(`USSA fixtures: ${matches.size}`)
   console.log(`Competition exists: ${competition.exists()} publicVisible=${competition.data()?.publicVisible}`)
   console.log(`Season exists: ${season.exists()}`)

@@ -200,36 +200,9 @@ try {
     const existingCompetition = await getDoc(doc(database, 'competitions', schedule.competition.id))
     const batch = writeBatch(database)
 
-    // Number-only squads for new opponent teams (jerseys 4-15, no names)
-    const squadNumbers = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-    const playerWrites = []
-    for (const team of teamWrites) {
-      for (const number of squadNumbers) {
-        playerWrites.push({
-          id: `${team.id}-p${number}`,
-          data: {
-            teamId: team.id,
-            firstName: '',
-            lastName: '',
-            numberOnly: true,
-            jerseyNumber: number,
-            position: null,
-            secondaryPosition: null,
-            availability: 'active',
-            isActive: true,
-            publicVisible: false,
-            archivedAt: null,
-          },
-        })
-      }
-    }
-
     for (const team of teamWrites) {
       const { id, ...data } = team
       batch.set(doc(database, 'teams', id), data)
-    }
-    for (const player of playerWrites) {
-      batch.set(doc(database, 'players', player.id), player.data)
     }
     if (!existingSeason.exists()) {
       const { name, startDate, endDate } = schedule.season

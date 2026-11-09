@@ -7,6 +7,7 @@ import type {
   Team,
   TeamGender,
 } from '@/types/domain'
+import { isDutTeamId } from '@/types/domain'
 import { buildStandings, matchScore } from '@/services/analytics/stats'
 import type { PublicData } from './usePublicData'
 
@@ -15,16 +16,23 @@ export function flattenEvents(data: PublicData): MatchEventData[] {
 }
 
 export function teamsForGender(data: PublicData, gender: TeamGender): Team[] {
-  return data.teams.filter((team) => team.gender === gender)
+  return data.teams.filter((team) => isDutTeamId(team.id) && team.gender === gender)
 }
 
 export function matchesForGender(data: PublicData, gender: TeamGender): Match[] {
   const ids = new Set(teamsForGender(data, gender).map((team) => team.id))
-  return data.matches.filter((match) => ids.has(match.homeTeamId) && ids.has(match.awayTeamId))
+  return data.matches.filter((match) => ids.has(match.homeTeamId) || ids.has(match.awayTeamId))
 }
 
 export function standingsForGender(data: PublicData, gender: TeamGender): StandingRow[] {
-  return buildStandings(teamsForGender(data, gender), matchesForGender(data, gender), flattenEvents(data))
+  const teams = teamsForGender(data, gender)
+  const dutTeamIds = new Set(teams.map((team) => team.id))
+  const matches = matchesForGender(data, gender)
+  const involvedIds = new Set(matches.flatMap((match) => [match.homeTeamId, match.awayTeamId]))
+  const involvedTeams = [...data.teamById.values()].filter((team) => involvedIds.has(team.id))
+  return buildStandings(involvedTeams, matches, flattenEvents(data)).filter((row) =>
+    dutTeamIds.has(row.teamId),
+  )
 }
 
 export function scoreOf(data: PublicData, match: Match) {

@@ -18,7 +18,7 @@ import { recordAudit } from '@/services/audit/record'
 import { createInvitedAuthAccount, generateTemporaryPassword } from '@/services/firebase/accounts'
 import { firebaseAuth } from '@/services/firebase/app'
 import { sendPasswordResetEmail } from 'firebase/auth'
-import type { UserRole } from '@/types/domain'
+import { isDutTeamId, type UserRole } from '@/types/domain'
 
 const ROLE_TONE = {
   admin: 'danger',
@@ -274,6 +274,7 @@ export function AdminUsersPage() {
                 </TD>
                 <TD>
                   {user.teamIds
+                    .filter(isDutTeamId)
                     .map((teamId) => data.teams.find((team) => team.id === teamId)?.shortName ?? teamId)
                     .join(', ') || '—'}
                 </TD>
@@ -387,7 +388,7 @@ export function AdminUsersPage() {
                     className="w-full"
                   />
                 </Field>
-                <Field label="Team" htmlFor="invite-team" hint="Admins and media span both teams.">
+                <Field label="DUT squad" htmlFor="invite-team" hint="Administrators are assigned to both DUT squads.">
                   <Select
                     label="Team"
                     value={form.teamId}

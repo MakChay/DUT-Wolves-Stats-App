@@ -131,8 +131,9 @@ export function AppShell({ area }: { area: RoleArea }) {
 
   if (user?.mustChangePassword) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-canvas px-4 py-10">
-        <div className="w-full max-w-md rounded-card border border-line bg-surface p-6 shadow-card">
+      <div className="relative isolate flex min-h-dvh items-center justify-center bg-canvas px-4 py-10">
+        <WolfWatermark opacity={0.04} />
+        <div className="relative z-10 w-full max-w-md rounded-card border border-line bg-surface p-6 shadow-card">
           <BrandMark />
           <h1 className="mt-4 text-xl font-bold text-ink">Activate your account</h1>
           <p className="mb-4 mt-1 text-sm text-ink-muted">
@@ -244,8 +245,11 @@ export function AppShell({ area }: { area: RoleArea }) {
           </DropdownMenu.Root>
         </header>
 
-        <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 lg:px-8">
-          <Outlet />
+        <main className="relative isolate mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 lg:px-8">
+          <WolfWatermark opacity={0.035} />
+          <div className="relative z-10">
+            <Outlet />
+          </div>
         </main>
       </div>
 

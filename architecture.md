@@ -100,14 +100,15 @@ This model is intentionally aligned with basketball operations and event-driven 
 1. The authenticated user loads available team assignments.
 2. The app filters team data according to user role and membership.
 3. If the user has one DUT squad assignment, it is selected automatically; users assigned multiple DUT squads can switch between those squads.
-4. The opponent is selected from each match and is never part of the DUT squad selector.
+4. The opponent is selected per DUT fixture and is never part of the DUT squad selector or team administration.
 5. Every dashboard and stats view resolves against the selected DUT squad.
 
 ### Match and stats flow
 1. Match data is stored with competition, season, and team references.
 2. Match events are stored individually to allow score and stat reconstruction.
-3. Managers can add match-only opponent jersey entries to the opponent side of a match and record player events against them. These entries are stored in the match roster, not the season player register.
-4. Public pages consume only safe data views while internal views can access full records.
+3. Managers record individual events for DUT players; opponent points are team-score events with no player identity or opponent roster.
+4. Public pages list DUT squads and players only. Opponent team records remain available as fixture labels and scores against DUT.
+5. Public pages consume only safe data views while internal views can access full records.
 
 ## 7. Repository abstraction
 

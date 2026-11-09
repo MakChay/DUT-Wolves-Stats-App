@@ -37,8 +37,9 @@ export function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-dvh bg-canvas lg:grid-cols-[1.05fr_1fr]">
-      <section className="relative hidden overflow-hidden border-r border-line bg-sidebar p-10 lg:flex lg:flex-col lg:justify-between">
+    <div className="relative isolate grid min-h-dvh bg-canvas lg:grid-cols-[1.05fr_1fr]">
+      <WolfWatermark className="z-0 lg:hidden" opacity={0.035} />
+      <section className="relative z-10 hidden overflow-hidden border-r border-line bg-sidebar p-10 lg:flex lg:flex-col lg:justify-between">
         <WolfWatermark opacity={0.08} />
         <div className="absolute -right-24 top-24 h-72 w-72 rounded-full bg-accent/10 blur-3xl" aria-hidden="true" />
         <div className="relative">
@@ -81,7 +82,7 @@ export function LoginPage() {
         </p>
       </section>
 
-      <section className="flex items-center justify-center px-4 py-10 sm:px-8">
+      <section className="relative z-10 flex items-center justify-center px-4 py-10 sm:px-8">
         <div className="w-full max-w-md">
           <div className="mb-6 flex items-center gap-3 lg:hidden">
             <BrandMark />

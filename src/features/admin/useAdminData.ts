@@ -7,6 +7,7 @@ import type {
   Team,
   User,
 } from '@/types/domain'
+import { isDutTeamId } from '@/types/domain'
 import { repositories } from '@/services/repositories'
 import { useAsync } from '@/hooks/useAsync'
 
@@ -21,14 +22,20 @@ export interface AdminData {
 }
 
 async function loadAdminData(): Promise<AdminData> {
-  const [teams, users, competitions, seasons, matches, players] = await Promise.all([
+  const [teams, users, competitions, seasons, allMatches, menPlayers, womenPlayers] = await Promise.all([
     repositories.teams.list(),
     repositories.users.list(),
     repositories.competitions.list(),
     repositories.competitions.listSeasons(),
     repositories.matches.list(),
-    repositories.players.list(),
+    repositories.players.listByTeam('team-men'),
+    repositories.players.listByTeam('team-women'),
   ])
+
+  const matches = allMatches.filter(
+    (match) => isDutTeamId(match.homeTeamId) || isDutTeamId(match.awayTeamId),
+  )
+  const players = [...menPlayers, ...womenPlayers]
 
   const eventLists = await Promise.all(
     matches.map((match) => repositories.events.listByMatch(match.id)),

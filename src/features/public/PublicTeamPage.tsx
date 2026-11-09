@@ -299,7 +299,7 @@ export function PublicTeamPage() {
   return (
     <PublicGate>
       {(data) => {
-        const team = teamId ? data.teamById.get(teamId) : null
+        const team = teamId ? data.teams.find((entry) => entry.id === teamId) : null
         if (!team || !team.publicVisible) {
           return (
             <EmptyState

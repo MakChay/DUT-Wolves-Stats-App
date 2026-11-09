@@ -1,7 +1,6 @@
 import type { Match, MatchEvent, MatchRoster, Player, Team } from '@/types/domain'
 import { EVENT_POINTS } from '@/types/domain'
 import {
-  aggregate,
   derivePlayerGameStats,
   deriveTeamGameStats,
   matchScore,
@@ -9,6 +8,7 @@ import {
 import { Scoreboard } from '@/components/stats/scoreboard'
 import { Table, TableWrap, TBody, TD, TH, THead, TR } from '@/components/ui/table'
 import { formatDate, formatTime } from '@/utils/format'
+import { isDutTeamId } from '@/types/domain'
 
 export interface BoxScoreRow {
   player: Player
@@ -165,11 +165,9 @@ function TeamBoxScore({
 
 export function MatchReport({ match, events, rosters, players, homeTeam, awayTeam, compact }: MatchReportProps) {
   const score = matchScore(events, match)
-  const homeRows = buildBoxScore(match, events, rosters, players, match.homeTeamId)
-  const awayRows = buildBoxScore(match, events, rosters, players, match.awayTeamId)
+  const dutTeam = isDutTeamId(homeTeam.id) ? homeTeam : awayTeam
+  const dutRows = buildBoxScore(match, events, rosters, players, dutTeam.id)
   const periods = periodScores(match, events)
-  const homeTotals = aggregate(homeRows.map((row) => row.stats))
-  const awayTotals = aggregate(awayRows.map((row) => row.stats))
 
   return (
     <div className="space-y-5">
@@ -213,44 +211,18 @@ export function MatchReport({ match, events, rosters, players, homeTeam, awayTea
         </TableWrap>
 
         <div className="rounded-card border border-line bg-surface p-4">
-          <p className="label-caps mb-2">Team shooting</p>
-          <div className="space-y-2 text-xs">
-            {[
-              ['FG', homeTotals.fgm, homeTotals.fga, homeTotals.fgPct, awayTotals.fgm, awayTotals.fga, awayTotals.fgPct],
-              ['3PT', homeTotals.tpm, homeTotals.tpa, homeTotals.tpPct, awayTotals.tpm, awayTotals.tpa, awayTotals.tpPct],
-              ['FT', homeTotals.ftm, homeTotals.fta, homeTotals.ftPct, awayTotals.ftm, awayTotals.fta, awayTotals.ftPct],
-            ].map(([label, hMade, hAtt, hPct, aMade, aAtt, aPct]) => (
-              <div key={String(label)} className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                <span className="stat-num text-right text-ink">
-                  {hMade}/{hAtt} · {hPct}%
-                </span>
-                <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] font-bold text-ink-faint">
-                  {label}
-                </span>
-                <span className="stat-num text-ink">
-                  {aMade}/{aAtt} · {aPct}%
-                </span>
-              </div>
-            ))}
-          </div>
+          <p className="label-caps mb-2">Opponent tracking</p>
+          <p className="text-sm font-semibold text-ink">{dutTeam.id === homeTeam.id ? awayTeam.name : homeTeam.name}</p>
+          <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+            Final and period scores are tracked for this opponent. Player-level opponent statistics are not collected.
+          </p>
           <p className="mt-3 border-t border-line pt-2 text-[11px] text-ink-faint">
             {match.venue} · {homeTeam.shortName} vs {awayTeam.shortName}
           </p>
         </div>
       </div>
 
-      <TeamBoxScore
-        team={homeTeam}
-        rows={homeRows}
-        match={match}
-        events={events}
-      />
-      <TeamBoxScore
-        team={awayTeam}
-        rows={awayRows}
-        match={match}
-        events={events}
-      />
+      <TeamBoxScore team={dutTeam} rows={dutRows} match={match} events={events} />
     </div>
   )
 }
