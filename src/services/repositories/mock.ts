@@ -356,6 +356,23 @@ export const mockRepositories: Repositories = {
       matches = [...matches, match]
       return copy(match)
     },
+    async clearScore(id: string) {
+      await delay(60)
+      let result: Match | null = null
+      matches = matches.map((match) => {
+        if (match.id !== id) return match
+        const { homeScore: _home, awayScore: _away, scoreEnteredByUserId: _by, scoreEnteredAt: _at, ...rest } = match
+        result = {
+          ...rest,
+          status: 'scheduled',
+          period: 1,
+          clockSeconds: 600,
+          adminComplete: false,
+        }
+        return result
+      })
+      return result ? copy(result) : null
+    },
     async remove(id: string) {
       await delay(60)
       matches = matches.filter((match) => match.id !== id)

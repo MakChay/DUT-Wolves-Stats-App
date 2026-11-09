@@ -59,6 +59,7 @@ export function AdminMatchesPage() {
   const [scoreTarget, setScoreTarget] = useState<Match | null>(null)
   const [scoreForm, setScoreForm] = useState({ home: '', away: '' })
   const [scoreError, setScoreError] = useState<string | null>(null)
+  const [confirmClear, setConfirmClear] = useState(false)
   const [form, setForm] = useState<FixtureForm>(EMPTY_FORM)
   const [formError, setFormError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -298,6 +299,7 @@ export function AdminMatchesPage() {
       away: match.awayScore === undefined ? '' : String(match.awayScore),
     })
     setScoreError(null)
+    setConfirmClear(false)
   }
 
   const saveScore = async () => {
@@ -353,6 +355,41 @@ export function AdminMatchesPage() {
       await reload()
     } catch (scoreSaveError) {
       setScoreError(scoreSaveError instanceof Error ? scoreSaveError.message : 'Could not save the score.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const clearScore = async (match: Match) => {
+    if (!user || user.role !== 'admin') return
+    setBusy(true)
+    setScoreError(null)
+    try {
+      const updated = await repositories.matches.clearScore(match.id)
+      if (!updated) throw new Error('The fixture could not be found.')
+      await recordAudit({
+        user,
+        entityType: 'match',
+        entityId: match.id,
+        action: 'update',
+        summary: `Cleared the final score for ${match.homeTeamId} vs ${match.awayTeamId} and returned it to scheduled.`,
+        before: {
+          homeScore: match.homeScore ?? null,
+          awayScore: match.awayScore ?? null,
+          status: match.status,
+        },
+        after: { homeScore: null, awayScore: null, status: 'scheduled' },
+      })
+      toast({
+        title: 'Result cleared',
+        description: 'The fixture is scheduled again and removed from the standings.',
+        tone: 'success',
+      })
+      setScoreTarget(null)
+      setConfirmClear(false)
+      await reload()
+    } catch (clearError) {
+      setScoreError(clearError instanceof Error ? clearError.message : 'Could not clear the result.')
     } finally {
       setBusy(false)
     }
@@ -600,12 +637,37 @@ export function AdminMatchesPage() {
             description="Enter the final score for this tournament game. It will be marked completed and included in the standings."
             className="max-w-md"
             footer={
-              <>
-                <Button variant="ghost" onClick={() => setScoreTarget(null)} disabled={busy}>Cancel</Button>
-                <Button onClick={() => void saveScore()} disabled={busy}>
-                  {busy ? 'Saving…' : 'Save final score'}
-                </Button>
-              </>
+              <div className="flex w-full flex-wrap items-center justify-between gap-2">
+                <div>
+                  {scoreTarget.homeScore !== undefined ? (
+                    confirmClear ? (
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => void clearScore(scoreTarget)}
+                      >
+                        Confirm clear
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => setConfirmClear(true)}
+                      >
+                        Clear result
+                      </Button>
+                    )
+                  ) : null}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="ghost" onClick={() => setScoreTarget(null)} disabled={busy}>Cancel</Button>
+                  <Button onClick={() => void saveScore()} disabled={busy}>
+                    {busy ? 'Saving…' : 'Save final score'}
+                  </Button>
+                </div>
+              </div>
             }
           >
             <div className="grid grid-cols-2 gap-3">

@@ -58,6 +58,7 @@ export interface MatchRepository {
   listByCompetition(competitionId: string): Promise<Match[]>
   create(match: Match): Promise<Match>
   update(id: string, patch: Partial<Match>): Promise<Match | null>
+  clearScore(id: string): Promise<Match | null>
   remove(id: string): Promise<void>
   subscribePublic(onChange: (matches: Match[]) => void, onError: (error: Error) => void): () => void
 }

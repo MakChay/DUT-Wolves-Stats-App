@@ -1,6 +1,7 @@
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -273,6 +274,19 @@ export const firestoreRepositories: Repositories = {
     },
     create: (match) => write(COLLECTIONS.matches, match),
     update: (id, changes) => patch<Match>(COLLECTIONS.matches, id, changes),
+    async clearScore(id) {
+      await updateDoc(doc(db(), COLLECTIONS.matches, id), {
+        homeScore: deleteField(),
+        awayScore: deleteField(),
+        scoreEnteredByUserId: deleteField(),
+        scoreEnteredAt: deleteField(),
+        status: 'scheduled',
+        period: 1,
+        clockSeconds: 600,
+        adminComplete: false,
+      })
+      return readOne<Match>(COLLECTIONS.matches, id)
+    },
     async remove(id) {
       await deleteDoc(doc(db(), COLLECTIONS.matches, id))
     },
