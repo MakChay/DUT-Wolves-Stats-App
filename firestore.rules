@@ -1,0 +1,343 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return signedIn() && profile().role == 'admin';
+    }
+
+    function isManager() {
+      return signedIn() && profile().role in ['admin', 'manager'];
+    }
+
+    function managesTeam(teamId) {
+      return isManager() && (isAdmin() || teamId in profile().teamIds);
+    }
+
+    function isTeamMember(teamId) {
+      return signedIn() && (
+        isAdmin()
+        || teamId in profile().teamIds
+        || (
+          profile().role == 'player'
+          && profile().playerId is string
+          && get(/databases/$(database)/documents/players/$(profile().playerId)).data.teamId == teamId
+        )
+      );
+    }
+
+    function canReadMatch(matchData) {
+      return matchData.publicVisible == true
+        || isAdmin()
+        || isTeamMember(matchData.homeTeamId)
+        || isTeamMember(matchData.awayTeamId);
+    }
+
+    function canManageMatch(matchData) {
+      return isAdmin() || (
+        signedIn()
+        && profile().role == 'manager'
+        && (
+          matchData.homeTeamId in profile().teamIds
+          || matchData.awayTeamId in profile().teamIds
+        )
+      );
+    }
+
+    function canReadPrivateMatchEvents(matchId) {
+      let matchData = get(/databases/$(database)/documents/matches/$(matchId)).data;
+      return isAdmin() || (
+        signedIn()
+        && profile().role in ['manager', 'coach']
+        && (
+          matchData.homeTeamId in profile().teamIds
+          || matchData.awayTeamId in profile().teamIds
+        )
+      );
+    }
+
+    function canManageRoster(rosterData) {
+      let matchData = get(/databases/$(database)/documents/matches/$(rosterData.matchId)).data;
+      return managesTeam(rosterData.teamId)
+        && canManageMatch(matchData)
+        && rosterData.teamId in [matchData.homeTeamId, matchData.awayTeamId];
+    }
+
+    function canManageMatchEvent(eventData) {
+      let matchData = get(/databases/$(database)/documents/matches/$(eventData.matchId)).data;
+      return canManageMatch(matchData)
+        && eventData.teamId in [matchData.homeTeamId, matchData.awayTeamId];
+    }
+
+    function canReadMatchRoster(matchId) {
+      let matchData = get(/databases/$(database)/documents/matches/$(matchId)).data;
+      return isAdmin()
+        || isTeamMember(matchData.homeTeamId)
+        || isTeamMember(matchData.awayTeamId);
+    }
+
+    function canReadPlayer(playerId, playerData) {
+      return isAdmin()
+        || (
+          signedIn()
+          && profile().role in ['manager', 'coach']
+          && playerData.teamId in profile().teamIds
+        )
+        || (
+          signedIn()
+          && profile().role == 'player'
+          && profile().playerId == playerId
+        );
+    }
+
+    function canReadChangeRequest(requestData) {
+      return isAdmin()
+        || managesTeam(requestData.teamId)
+        || (
+          signedIn()
+          && requestData.submittedByUserId == request.auth.uid
+        );
+    }
+
+    function canReadChangeRequestAudit(entryData) {
+      let changeRequestPath = /databases/$(database)/documents/changeRequests/$(entryData.entityId);
+      return isAdmin() || (
+        entryData.entityType == 'change_request'
+        && exists(changeRequestPath)
+        && managesTeam(get(changeRequestPath).data.teamId)
+      );
+    }
+
+    function isValidPublicEvent(eventId) {
+      let sourcePath = /databases/$(database)/documents/matchEvents/$(eventId);
+      let source = getAfter(sourcePath).data;
+      let projection = request.resource.data;
+      return existsAfter(sourcePath)
+        && projection.keys().hasOnly([
+          'clientEventId', 'matchId', 'teamId', 'playerId', 'type', 'period',
+          'clockSeconds', 'createdAt', 'points', 'voided', 'voidedAt', 'correctionOf'
+        ])
+        && source.matchId == projection.matchId
+        && source.teamId == projection.teamId
+        && source.clientEventId == projection.clientEventId
+        && source.type == projection.type
+        && source.period == projection.period
+        && source.clockSeconds == projection.clockSeconds
+        && source.createdAt == projection.createdAt
+        && source.get('playerId', null) == projection.get('playerId', null)
+        && source.get('points', null) == projection.get('points', null)
+        && source.get('voided', null) == projection.get('voided', null)
+        && source.get('voidedAt', null) == projection.get('voidedAt', null)
+        && source.get('correctionOf', null) == projection.get('correctionOf', null);
+    }
+
+    function isValidPublicPlayer(playerId) {
+      let sourcePath = /databases/$(database)/documents/players/$(playerId);
+      let source = getAfter(sourcePath).data;
+      let projection = request.resource.data;
+      return existsAfter(sourcePath)
+        && projection.keys().hasOnly([
+          'teamId', 'firstName', 'lastName', 'jerseyNumber', 'position',
+          'secondaryPosition', 'availability', 'heightCm', 'isActive',
+          'publicVisible', 'photoUrl', 'bio'
+        ])
+        && projection.keys().hasAll([
+          'teamId', 'firstName', 'lastName', 'jerseyNumber', 'position',
+          'availability', 'isActive', 'publicVisible'
+        ])
+        && source.teamId == projection.teamId
+        && source.firstName == projection.firstName
+        && source.lastName == projection.lastName
+        && source.get('jerseyNumber', null) == projection.get('jerseyNumber', null)
+        && source.get('position', null) == projection.get('position', null)
+        && source.get('secondaryPosition', null) == projection.get('secondaryPosition', null)
+        && projection.availability == (
+          source.availability == 'injured' ? 'unavailable' : source.availability
+        )
+        && source.get('heightCm', null) == projection.get('heightCm', null)
+        && source.isActive == true
+        && projection.isActive == true
+        && source.publicVisible == true
+        && projection.publicVisible == true
+        && source.get('photoUrl', null) == projection.get('photoUrl', null)
+        && source.get('bio', null) == projection.get('bio', null);
+    }
+
+    function isValidReportStatus(reportId) {
+      let sourcePath = /databases/$(database)/documents/reports/$(reportId);
+      let source = getAfter(sourcePath).data;
+      let projection = request.resource.data;
+      return existsAfter(sourcePath)
+        && projection.keys().hasOnly(['matchId', 'teamId', 'status', 'submittedAt'])
+        && source.matchId == projection.matchId
+        && source.teamId == projection.teamId
+        && source.status == projection.status
+        && source.submittedAt == projection.submittedAt;
+    }
+
+    match /users/{userId} {
+      allow get: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (
+          signedIn()
+          && request.auth.uid == userId
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['mustChangePassword'])
+        );
+    }
+
+    match /teams/{teamId} {
+      allow read: if signedIn() || resource.data.publicVisible == true;
+      allow write: if isAdmin();
+    }
+
+    match /players/{playerId} {
+      allow read: if canReadPlayer(playerId, resource.data);
+      allow create: if managesTeam(request.resource.data.teamId);
+      allow update: if managesTeam(resource.data.teamId)
+        && managesTeam(request.resource.data.teamId);
+      allow delete: if managesTeam(resource.data.teamId);
+    }
+
+    match /publicPlayers/{playerId} {
+      allow read: if true;
+      allow create: if managesTeam(request.resource.data.teamId)
+        && isValidPublicPlayer(playerId);
+      allow update: if managesTeam(resource.data.teamId)
+        && managesTeam(request.resource.data.teamId)
+        && resource.data.teamId == request.resource.data.teamId
+        && isValidPublicPlayer(playerId);
+      allow delete: if managesTeam(resource.data.teamId);
+    }
+
+    match /competitions/{competitionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /seasons/{seasonId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /matches/{matchId} {
+      allow read: if canReadMatch(resource.data);
+      allow create: if canManageMatch(request.resource.data);
+      allow update: if canManageMatch(resource.data)
+        && canManageMatch(request.resource.data);
+      allow delete: if canManageMatch(resource.data);
+    }
+
+    match /matchRosters/{rosterId} {
+      allow read: if canReadMatchRoster(resource.data.matchId);
+      allow create: if canManageRoster(request.resource.data);
+      allow update: if canManageRoster(resource.data)
+        && canManageRoster(request.resource.data);
+      allow delete: if canManageRoster(resource.data);
+    }
+
+    match /matchEvents/{eventId} {
+      allow read: if canReadPrivateMatchEvents(resource.data.matchId);
+      allow create: if canManageMatchEvent(request.resource.data);
+      allow update: if canManageMatchEvent(resource.data)
+        && canManageMatchEvent(request.resource.data)
+        && request.resource.data.matchId == resource.data.matchId;
+      allow delete: if canManageMatchEvent(resource.data);
+    }
+
+    match /publicMatchEvents/{eventId} {
+      allow read: if canReadMatch(
+        get(/databases/$(database)/documents/matches/$(resource.data.matchId)).data
+      );
+      allow create, update: if canManageMatchEvent(request.resource.data)
+        && isValidPublicEvent(eventId);
+      allow delete: if canManageMatchEvent(resource.data);
+    }
+
+    match /media/{assetId} {
+      allow read: if isAdmin() || resource.data.status == 'published';
+      allow write: if false;
+    }
+
+    match /registrations/{registrationId} {
+      allow read: if managesTeam(resource.data.teamId)
+        || (
+          signedIn()
+          && profile().role == 'player'
+          && profile().playerId == resource.data.playerId
+        );
+      allow create: if managesTeam(request.resource.data.teamId);
+      allow update: if managesTeam(resource.data.teamId)
+        && managesTeam(request.resource.data.teamId);
+      allow delete: if managesTeam(resource.data.teamId);
+    }
+
+    match /changeRequests/{requestId} {
+      allow read: if canReadChangeRequest(resource.data);
+      allow create: if signedIn()
+        && request.resource.data.submittedByUserId == request.auth.uid
+        && request.resource.data.teamId in profile().teamIds;
+      allow update: if managesTeam(resource.data.teamId)
+        && managesTeam(request.resource.data.teamId)
+        && request.resource.data.teamId == resource.data.teamId;
+      allow delete: if isAdmin();
+    }
+
+    match /reports/{reportId} {
+      allow read: if managesTeam(resource.data.teamId);
+      allow create: if managesTeam(request.resource.data.teamId);
+      allow update: if managesTeam(resource.data.teamId)
+        && managesTeam(request.resource.data.teamId)
+        && request.resource.data.teamId == resource.data.teamId
+        && request.resource.data.matchId == resource.data.matchId;
+      allow delete: if isAdmin();
+    }
+
+    match /reportStatuses/{reportId} {
+      allow read: if isAdmin()
+        || (signedIn() && profile().role == 'manager');
+      allow create, update: if managesTeam(request.resource.data.teamId)
+        && isValidReportStatus(reportId);
+      allow delete: if managesTeam(resource.data.teamId);
+    }
+
+    match /audit/{entryId} {
+      allow read: if canReadChangeRequestAudit(resource.data);
+      allow create: if signedIn()
+        && profile().role in ['admin', 'manager', 'coach']
+        && request.resource.data.actorUserId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if signedIn()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAdmin()
+        || (
+          signedIn()
+          && profile().role in ['manager', 'coach']
+          && get(/databases/$(database)/documents/users/$(request.resource.data.userId))
+            .data.teamIds.hasAny(profile().teamIds)
+        );
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId;
+      allow delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

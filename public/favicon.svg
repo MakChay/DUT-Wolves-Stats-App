@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#0B0D10"/>
+  <path d="M13 15h13L13 28H0V15z" fill="#31C5D8"/>
+  <path d="M26 15h13L26 28H13z" fill="#E74192"/>
+  <path d="M13 28h13v13H13z" fill="#8068D8"/>
+  <path d="M26 28h13L26 41H13z" fill="#A8CE3A"/>
+  <text x="32" y="55" fill="#F5F6F7" font-family="Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle">DW</text>
+</svg>

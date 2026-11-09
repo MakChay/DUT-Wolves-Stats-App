@@ -1,0 +1,154 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --color-canvas: 245 246 247;
+    --color-sidebar: 236 239 242;
+    --color-surface: 255 255 255;
+    --color-surface-raised: 248 249 250;
+    --color-surface-hover: 240 243 245;
+    --color-accent: 0 128 145;
+    --color-accent-hover: 0 105 121;
+    --color-accent-contrast: 255 255 255;
+    --color-accent-soft: rgba(49, 197, 216, 0.14);
+    --color-accent-border: rgba(0, 128, 145, 0.35);
+    --color-ink: 11 13 16;
+    --color-ink-muted: 76 83 92;
+    --color-ink-faint: 113 122 132;
+    --color-success: 18 115 83;
+    --color-warning: 148 91 15;
+    --color-danger: 184 54 62;
+    --color-line: rgba(23, 26, 31, 0.12);
+    --color-jersey-cyan: 49 197 216;
+    --color-jersey-magenta: 231 65 146;
+    --color-jersey-violet: 128 104 216;
+    --color-jersey-lime: 168 206 58;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --color-canvas: 11 13 16;
+    --color-sidebar: 15 18 22;
+    --color-surface: 23 26 31;
+    --color-surface-raised: 31 35 41;
+    --color-surface-hover: 42 47 54;
+    --color-accent: 49 197 216;
+    --color-accent-hover: 92 215 229;
+    --color-accent-contrast: 6 20 24;
+    --color-accent-soft: rgba(49, 197, 216, 0.14);
+    --color-accent-border: rgba(49, 197, 216, 0.4);
+    --color-ink: 245 246 247;
+    --color-ink-muted: 176 183 191;
+    --color-ink-faint: 145 154 164;
+    --color-success: 110 231 183;
+    --color-warning: 244 190 82;
+    --color-danger: 248 113 113;
+    --color-line: rgba(245, 246, 247, 0.12);
+    --color-jersey-cyan: 49 197 216;
+    --color-jersey-magenta: 231 65 146;
+    --color-jersey-violet: 145 126 227;
+    --color-jersey-lime: 168 206 58;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    min-height: 100dvh;
+  }
+
+  #root {
+    min-height: 100dvh;
+  }
+
+  * {
+    @apply border-line;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent/70 ring-offset-2 ring-offset-canvas;
+  }
+
+  ::selection {
+    @apply bg-accent/30 text-ink;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-ink-faint/40;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-ink-faint/70;
+  }
+
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+@layer components {
+  .stat-num {
+    @apply font-semibold tabular-nums tracking-tight;
+  }
+
+  .label-caps {
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-faint;
+  }
+
+  .surface-card {
+    @apply rounded-card border border-line bg-surface shadow-card;
+  }
+
+  .glass-panel {
+    @apply rounded-card border border-line bg-surface/60 backdrop-blur-md shadow-card;
+  }
+
+  .glass-tile {
+    @apply rounded-control border border-line bg-surface-raised/70 backdrop-blur-sm;
+  }
+
+  .glass-panel {
+    @apply rounded-card border border-white/15 bg-black/45 shadow-card backdrop-blur-xl;
+  }
+
+  .jersey-spectrum {
+    background: linear-gradient(
+      90deg,
+      rgb(var(--color-jersey-cyan)),
+      rgb(var(--color-jersey-magenta)),
+      rgb(var(--color-jersey-violet)),
+      rgb(var(--color-jersey-lime))
+    );
+  }
+
+  .scroll-thin {
+    scrollbar-width: thin;
+  }
+}
+
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}

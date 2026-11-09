@@ -1,0 +1,145 @@
+{
+  "competition": {
+    "id": "comp-ussa-wits-2026-draft",
+    "seasonId": "season-ussa-wits-2026",
+    "name": "University Sport South Africa Basketball 2026",
+    "shortName": "USSA Wits 2026",
+    "startDate": "2026-12-01T00:00:00+02:00",
+    "endDate": "2026-12-05T23:59:00+02:00"
+  },
+  "season": {
+    "id": "season-ussa-wits-2026",
+    "name": "USSA Basketball Championships 2026",
+    "startDate": "2026-12-01T00:00:00+02:00",
+    "endDate": "2026-12-05T23:59:00+02:00"
+  },
+  "schoolNames": {
+    "WITS": {
+      "name": "University of the Witwatersrand",
+      "aliases": ["Wits", "Wits Warriors"]
+    },
+    "SU": {
+      "name": "Stellenbosch University",
+      "aliases": ["Stellenbosch"]
+    },
+    "UWC": {
+      "name": "University of the Western Cape",
+      "aliases": []
+    },
+    "UFS": {
+      "name": "University of the Free State",
+      "aliases": ["Kovsies"]
+    },
+    "TUT": {
+      "name": "Tshwane University of Technology",
+      "aliases": ["TUT Vikings"]
+    },
+    "UJ": {
+      "name": "University of Johannesburg",
+      "aliases": ["UJ Lions"]
+    },
+    "CUT": {
+      "name": "Central University of Technology",
+      "aliases": []
+    },
+    "UCT": {
+      "name": "University of Cape Town",
+      "aliases": []
+    },
+    "UP": {
+      "name": "University of Pretoria",
+      "aliases": ["Tuks"]
+    },
+    "VUT": {
+      "name": "Vaal University of Technology",
+      "aliases": []
+    },
+    "NWU Vaal": {
+      "name": "North-West University Vaal",
+      "aliases": ["NWU Vaal Campus"]
+    },
+    "CPUT": {
+      "name": "Cape Peninsula University of Technology",
+      "aliases": ["CPUT Wings"]
+    },
+    "DUT": {
+      "name": "Durban University of Technology",
+      "aliases": ["DUT Wolves"]
+    },
+    "NWU Potch": {
+      "name": "North-West University Potchefstroom",
+      "aliases": ["NWU Potchefstroom"]
+    },
+    "RU": {
+      "name": "Rhodes University",
+      "aliases": ["Rhodes"]
+    },
+    "UKZN": {
+      "name": "University of KwaZulu-Natal",
+      "aliases": ["UKZN Impi"]
+    },
+    "EMERIS": {
+      "name": "Emeris University",
+      "aliases": ["EMERIS University"]
+    },
+    "UZ": {
+      "name": "University of Zululand",
+      "aliases": ["UniZulu", "UZ"]
+    }
+  },
+  "divisions": {
+    "women": {
+      "A-A": ["WITS", "TUT", "UP", "DUT"],
+      "A-B": ["SU", "UJ", "VUT", "UKZN"],
+      "B-A": ["UWC", "CUT", "CPUT", "NWU Potch"],
+      "B-B": ["UFS", "UCT", "NWU Vaal", "RU"]
+    },
+    "men": {
+      "A-A": ["WITS", "TUT", "UJ", "VUT"],
+      "A-B": ["SU", "UP", "NWU Vaal", "UCT"],
+      "B-A": ["EMERIS", "UFS", "CUT", "DUT"],
+      "B-B": ["UWC", "RU", "CPUT", "UZ"]
+    }
+  },
+  "days": [
+    {
+      "date": "2026-12-01",
+      "slots": [
+        { "time": "08:00", "gender": "women", "courtA": ["TUT", "UP"], "courtB": ["CUT", "CPUT"] },
+        { "time": "09:35", "gender": "men", "courtA": ["UP", "NWU Vaal"], "courtB": ["UFS", "CUT"] },
+        { "time": "11:15", "gender": "women", "courtA": ["WITS", "DUT"], "courtB": ["UWC", "NWU Potch"] },
+        { "time": "12:50", "gender": "men", "courtA": ["SU", "UCT"], "courtB": ["DUT", "EMERIS"] },
+        { "time": "14:25", "gender": "women", "courtA": ["SU", "UKZN"], "courtB": ["UFS", "RU"] },
+        { "time": "16:00", "gender": "men", "courtA": ["TUT", "UJ"], "courtB": ["RU", "CPUT"] },
+        { "time": "17:35", "gender": "women", "courtA": ["UJ", "VUT"], "courtB": ["UCT", "NWU Vaal"] },
+        { "time": "19:10", "gender": "men", "courtA": ["WITS", "VUT"], "courtB": ["UWC", "UZ"] }
+      ]
+    },
+    {
+      "date": "2026-12-02",
+      "slots": [
+        { "time": "08:00", "gender": "women", "courtA": ["SU", "UJ"], "courtB": ["UFS", "UCT"] },
+        { "time": "09:35", "gender": "men", "courtA": ["UJ", "VUT"], "courtB": ["CPUT", "UZ"] },
+        { "time": "11:15", "gender": "women", "courtA": ["UKZN", "VUT"], "courtB": ["RU", "NWU Vaal"] },
+        { "time": "12:50", "gender": "men", "courtA": ["TUT", "WITS"], "courtB": ["RU", "UWC"] },
+        { "time": "14:25", "gender": "women", "courtA": ["WITS", "TUT"], "courtB": ["UWC", "CUT"] },
+        { "time": "16:00", "gender": "men", "courtA": ["NWU Vaal", "UCT"], "courtB": ["CUT", "DUT"] },
+        { "time": "17:35", "gender": "women", "courtA": ["UP", "DUT"], "courtB": ["CPUT", "NWU Potch"] },
+        { "time": "19:10", "gender": "men", "courtA": ["UP", "SU"], "courtB": ["EMERIS", "UFS"] }
+      ]
+    },
+    {
+      "date": "2026-12-03",
+      "slots": [
+        { "time": "08:00", "gender": "women", "courtA": ["DUT", "TUT"], "courtB": ["NWU Potch", "CUT"] },
+        { "time": "09:35", "gender": "men", "courtA": ["SU", "NWU Vaal"], "courtB": ["UFS", "DUT"] },
+        { "time": "11:15", "gender": "women", "courtA": ["UP", "WITS"], "courtB": ["CPUT", "UWC"] },
+        { "time": "12:50", "gender": "men", "courtA": ["UCT", "UP"], "courtB": ["EMERIS", "CUT"] },
+        { "time": "14:25", "gender": "women", "courtA": ["UJ", "UKZN"], "courtB": ["UCT", "RU"] },
+        { "time": "16:00", "gender": "men", "courtA": ["TUT", "VUT"], "courtB": ["UWC", "CPUT"] },
+        { "time": "17:35", "gender": "women", "courtA": ["SU", "VUT"], "courtB": ["UFS", "NWU Vaal"] },
+        { "time": "19:10", "gender": "men", "courtA": ["WITS", "UJ"], "courtB": ["UZ", "RU"] }
+      ]
+    }
+  ]
+}

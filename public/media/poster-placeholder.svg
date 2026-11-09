@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#532918"/>
+      <stop offset="1" stop-color="#0B0602"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#g)"/>
+  <text x="400" y="470" text-anchor="middle" fill="#FFC41F" font-size="56" font-family="sans-serif" font-weight="900">GAME DAY</text>
+  <text x="400" y="520" text-anchor="middle" fill="#F7EDCB" font-size="22" font-family="sans-serif" letter-spacing="6">DUT WOLVES BASKETBALL</text>
+</svg>

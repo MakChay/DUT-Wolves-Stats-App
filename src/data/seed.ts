@@ -1,0 +1,1087 @@
+import type {
+  AppNotification,
+  AuditEntry,
+  Competition,
+  InjuryEntry,
+  Match,
+  MatchEvent,
+  MatchRoster,
+  MediaAsset,
+  Player,
+  PlayerRegistration,
+  PostMatchTeamReport,
+  Season,
+  Team,
+  TeamChangeRequest,
+  User,
+} from '@/types/domain'
+import { menRoster, OFFICIAL_STAFF, rosterPlayers, womenRoster } from './roster'
+import { simulateMatch } from './simulate'
+
+const iso = (value: string) => new Date(value).toISOString()
+
+export const seedSeasons: Season[] = [
+  {
+    id: 'season-2026',
+    name: '2026 Season',
+    startDate: iso('2026-02-01T00:00:00+02:00'),
+    endDate: iso('2026-11-30T23:59:00+02:00'),
+    isCurrent: true,
+  },
+  {
+    id: 'season-2025',
+    name: '2025 Season',
+    startDate: iso('2025-02-01T00:00:00+02:00'),
+    endDate: iso('2025-11-30T23:59:00+02:00'),
+    isCurrent: false,
+  },
+]
+
+export const seedCompetitions: Competition[] = [
+  {
+    id: 'comp-ussa-2026',
+    name: 'USSA Basketball Championships 2026',
+    shortName: 'USSA 2026',
+    seasonId: 'season-2026',
+    type: 'tournament',
+    startDate: iso('2026-10-16T08:00:00+02:00'),
+    endDate: iso('2026-10-27T20:00:00+02:00'),
+    publicVisible: true,
+  },
+  {
+    id: 'comp-league-2026',
+    name: 'DUT Basketball League 2026',
+    shortName: 'DUT League',
+    seasonId: 'season-2026',
+    type: 'league',
+    startDate: iso('2026-10-28T08:00:00+02:00'),
+    endDate: iso('2026-11-30T20:00:00+02:00'),
+    publicVisible: true,
+  },
+]
+
+export const seedTeams: Team[] = [
+  {
+    id: 'team-men',
+    name: 'DUT Wolves Men',
+    shortName: 'Wolves Men',
+    gender: 'men',
+    managerId: 'user-manager-men',
+    coachIds: ['user-coach-men-1', 'user-coach-men-2'],
+    primaryColor: '#B5935A',
+    publicVisible: true,
+    description:
+      'The DUT Wolves men’s programme competes in the USSA Basketball Championships and the DUT Basketball League.',
+    homeVenue: 'DUT Sports Centre, Durban',
+  },
+  {
+    id: 'team-women',
+    name: 'DUT Wolves Women',
+    shortName: 'Wolves Women',
+    gender: 'women',
+    managerId: 'user-manager-women',
+    coachIds: ['user-coach-women-1', 'user-coach-women-2'],
+    primaryColor: '#B5935A',
+    publicVisible: true,
+    description:
+      'The DUT Wolves women’s programme competes in the USSA Basketball Championships and the DUT Basketball League.',
+    homeVenue: 'DUT Sports Centre, Durban',
+  },
+  {
+    id: 'team-ukzn-men',
+    name: 'UKZN Impi',
+    shortName: 'UKZN',
+    gender: 'men',
+    managerId: 'opponent-manager-ukzn',
+    coachIds: [],
+    primaryColor: '#2563EB',
+    publicVisible: true,
+  },
+  {
+    id: 'team-wits-men',
+    name: 'Wits Warriors',
+    shortName: 'Wits',
+    gender: 'men',
+    managerId: 'opponent-manager-wits',
+    coachIds: [],
+    primaryColor: '#7C3AED',
+    publicVisible: true,
+  },
+  {
+    id: 'team-uj-men',
+    name: 'UJ Lions',
+    shortName: 'UJ',
+    gender: 'men',
+    managerId: 'opponent-manager-uj',
+    coachIds: [],
+    primaryColor: '#DC2626',
+    publicVisible: true,
+  },
+  {
+    id: 'team-tut-men',
+    name: 'TUT Vikings',
+    shortName: 'TUT',
+    gender: 'men',
+    managerId: 'opponent-manager-tut',
+    coachIds: [],
+    primaryColor: '#0F766E',
+    publicVisible: true,
+  },
+  {
+    id: 'team-cput-men',
+    name: 'CPUT Wings',
+    shortName: 'CPUT',
+    gender: 'men',
+    managerId: 'opponent-manager-cput',
+    coachIds: [],
+    primaryColor: '#B45309',
+    publicVisible: true,
+  },
+  {
+    id: 'team-nwu-men',
+    name: 'NWU Eagles',
+    shortName: 'NWU',
+    gender: 'men',
+    managerId: 'opponent-manager-nwu',
+    coachIds: [],
+    primaryColor: '#4338CA',
+    publicVisible: true,
+  },
+  {
+    id: 'team-ufs-men',
+    name: 'UFS Kovsies',
+    shortName: 'UFS',
+    gender: 'men',
+    managerId: 'opponent-manager-ufs',
+    coachIds: [],
+    primaryColor: '#BE123C',
+    publicVisible: true,
+  },
+  {
+    id: 'team-ukzn-women',
+    name: 'UKZN Impi Women',
+    shortName: 'UKZN W',
+    gender: 'women',
+    managerId: 'opponent-manager-ukzn-w',
+    coachIds: [],
+    primaryColor: '#2563EB',
+    publicVisible: true,
+  },
+  {
+    id: 'team-wits-women',
+    name: 'Wits Warriors Women',
+    shortName: 'Wits W',
+    gender: 'women',
+    managerId: 'opponent-manager-wits-w',
+    coachIds: [],
+    primaryColor: '#7C3AED',
+    publicVisible: true,
+  },
+  {
+    id: 'team-uj-women',
+    name: 'UJ Lions Women',
+    shortName: 'UJ W',
+    gender: 'women',
+    managerId: 'opponent-manager-uj-w',
+    coachIds: [],
+    primaryColor: '#DC2626',
+    publicVisible: true,
+  },
+  {
+    id: 'team-tut-women',
+    name: 'TUT Vikings Women',
+    shortName: 'TUT W',
+    gender: 'women',
+    managerId: 'opponent-manager-tut-w',
+    coachIds: [],
+    primaryColor: '#0F766E',
+    publicVisible: true,
+  },
+  {
+    id: 'team-cput-women',
+    name: 'CPUT Wings Women',
+    shortName: 'CPUT W',
+    gender: 'women',
+    managerId: 'opponent-manager-cput-w',
+    coachIds: [],
+    primaryColor: '#B45309',
+    publicVisible: true,
+  },
+  {
+    id: 'team-nwu-women',
+    name: 'NWU Eagles Women',
+    shortName: 'NWU W',
+    gender: 'women',
+    managerId: 'opponent-manager-nwu-w',
+    coachIds: [],
+    primaryColor: '#4338CA',
+    publicVisible: true,
+  },
+]
+
+const opponentFirstNames = [
+  'Mbali',
+  'Tshepo',
+  'Ruan',
+  'Kyle',
+  'Sizwe',
+  'Dylan',
+  'Amahle',
+  'Jaden',
+  'Buhle',
+  'Ethan',
+  'Ntando',
+  'Liam',
+]
+const opponentLastNames = [
+  'van Wyk',
+  'Mahlangu',
+  'Botha',
+  'Nkosi',
+  'Pillay',
+  'Mbeki',
+  'Jacobs',
+  'Mahlaba',
+  'Naidoo',
+  'Mokoena',
+  'Adams',
+  'Maseko',
+]
+
+function buildOpponentPlayers(teamId: string, count = 10): Player[] {
+  const hash = [...teamId].reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  return Array.from({ length: count }, (_, index) => {
+    const first = opponentFirstNames[(hash + index * 3) % opponentFirstNames.length]!
+    const last = opponentLastNames[(hash + index * 5) % opponentLastNames.length]!
+    return {
+      id: `${teamId}-p${index + 1}`,
+      teamId,
+      firstName: first,
+      lastName: last,
+      jerseyNumber: (index * 4 + (hash % 7)) % 40,
+      position: null,
+      availability: 'active' as const,
+      isActive: true,
+      publicVisible: true,
+      registeredCompetitionIds: [],
+    }
+  })
+}
+
+/**
+ * DUT squad. Jersey numbers and positions deliberately start unassigned; they
+ * are official records that a team manager must set and verify.
+ */
+export const seedPlayers: Player[] = [
+  ...rosterPlayers.map<Player>((entry) => ({
+    id: entry.id,
+    teamId: entry.teamId,
+    firstName: entry.firstName,
+    lastName: entry.lastName,
+    jerseyNumber: null,
+    position: null,
+    secondaryPosition: null,
+    availability: 'active',
+    studentNumber: entry.studentNumber,
+    campus: entry.campus,
+    isActive: true,
+    publicVisible: true,
+    joinedAt: iso('2026-09-01T08:00:00+02:00'),
+    registeredCompetitionIds: ['comp-league-2026'],
+    createdAt: iso('2026-09-01T08:00:00+02:00'),
+    updatedAt: iso('2026-09-01T08:00:00+02:00'),
+  })),
+  ...seedTeams
+    .filter((team) => team.id !== 'team-men' && team.id !== 'team-women')
+    .flatMap((team) => buildOpponentPlayers(team.id)),
+]
+
+export const seedUsers: User[] = [
+  {
+    id: 'user-admin',
+    email: 'admin@dutwolves.local',
+    displayName: 'DUT Wolves Administrator',
+    role: 'admin',
+    teamIds: ['team-men', 'team-women'],
+    title: 'System Administrator',
+    createdAt: iso('2026-01-10T08:00:00+02:00'),
+  },
+  {
+    id: OFFICIAL_STAFF.menManager.id,
+    email: OFFICIAL_STAFF.menManager.email,
+    displayName: OFFICIAL_STAFF.menManager.name,
+    role: 'manager',
+    teamIds: ['team-men'],
+    title: 'Team Manager',
+    createdAt: iso('2026-01-12T08:00:00+02:00'),
+  },
+  {
+    id: OFFICIAL_STAFF.womenManager.id,
+    email: OFFICIAL_STAFF.womenManager.email,
+    displayName: OFFICIAL_STAFF.womenManager.name,
+    role: 'manager',
+    teamIds: ['team-women'],
+    title: 'Team Manager',
+    createdAt: iso('2026-01-12T08:00:00+02:00'),
+  },
+  ...OFFICIAL_STAFF.menCoaches.map<User>((coach) => ({
+    id: coach.id,
+    email: coach.email,
+    displayName: coach.name,
+    role: 'coach',
+    teamIds: ['team-men'],
+    title: coach.title,
+    createdAt: iso('2026-01-12T08:00:00+02:00'),
+  })),
+  ...OFFICIAL_STAFF.womenCoaches.map<User>((coach) => ({
+    id: coach.id,
+    email: coach.email,
+    displayName: coach.name,
+    role: 'coach',
+    teamIds: ['team-women'],
+    title: coach.title,
+    createdAt: iso('2026-01-12T08:00:00+02:00'),
+  })),
+  {
+    id: 'user-player-men-10',
+    email: 'siyathuthuka.mabaso@dutwolves.local',
+    displayName: 'Siyathuthuka Mabaso',
+    role: 'player',
+    teamIds: ['team-men'],
+    playerId: 'men-10',
+    title: 'Player',
+    createdAt: iso('2026-09-01T08:00:00+02:00'),
+  },
+  {
+    id: 'user-player-women-01',
+    email: 'fezile.hlongwa@dutwolves.local',
+    displayName: 'Fezile Hlongwa',
+    role: 'player',
+    teamIds: ['team-women'],
+    playerId: 'women-01',
+    title: 'Player',
+    createdAt: iso('2026-09-01T08:00:00+02:00'),
+  },
+]
+
+interface MatchSeed {
+  id: string
+  competitionId: string
+  homeTeamId: string
+  awayTeamId: string
+  tipoff: string
+  venue: string
+  status: Match['status']
+  period: number
+  clockSeconds: number
+  round?: string
+  live?: boolean
+  seed?: number
+}
+
+const matchSeeds: MatchSeed[] = [
+  {
+    id: 'match-men-ussa-1',
+    competitionId: 'comp-ussa-2026',
+    homeTeamId: 'team-men',
+    awayTeamId: 'team-ukzn-men',
+    tipoff: iso('2026-10-18T18:00:00+02:00'),
+    venue: 'DUT Sports Centre, Durban',
+    status: 'completed',
+    period: 4,
+    clockSeconds: 0,
+    round: 'Group A',
+    seed: 11,
+  },
+  {
+    id: 'match-men-ussa-2',
+    competitionId: 'comp-ussa-2026',
+    homeTeamId: 'team-wits-men',
+    awayTeamId: 'team-men',
+    tipoff: iso('2026-10-21T16:30:00+02:00'),
+    venue: 'Wits Sports Hall, Johannesburg',
+    status: 'completed',
+    period: 4,
+    clockSeconds: 0,
+    round: 'Group A',
+    seed: 23,
+  },
+  {
+    id: 'match-men-ussa-3',
+    competitionId: 'comp-ussa-2026',
+    homeTeamId: 'team-men',
+    awayTeamId: 'team-uj-men',
+    tipoff: iso('2026-10-24T19:00:00+02:00'),
+    venue: 'DUT Sports Centre, Durban',
+    status: 'completed',
+    period: 4,
+    clockSeconds: 0,
+    round: 'Semi-final',
+    seed: 37,
+  },
+  {
+    id: 'match-men-league-1',
+    competitionId: 'comp-league-2026',
+    homeTeamId: 'team-tut-men',
+    awayTeamId: 'team-men',
+    tipoff: iso('2026-11-01T17:00:00+02:00'),
+    venue: 'TUT Arena, Pretoria',
+    status: 'completed',
+    period: 4,
+    clockSeconds: 0,
+    round: 'Round 1',
+    seed: 41,
+  },
+  {
+    id: 'match-men-live',
+    competitionId: 'comp-league-2026',
+    homeTeamId: 'team-men',
+    awayTeamId: 'team-ukzn-men',
+    tipoff: iso('2026-11-08T19:00:00+02:00'),
+    venue: 'DUT Sports Centre, Durban',
+    status: 'live',
+    period: 3,
+    clockSeconds: 402,
+    round: 'Round 2',
+    live: true,
+    seed: 53,
+  },
+  {
+    id: 'match-men-league-2',
+    competitionId: 'comp-league-2026',
+    homeTeamId: 'team-men',
+    awayTeamId: 'team-cput-men',
+    tipoff: iso('2026-11-12T18:30:00+02:00'),
+    venue: 'DUT Sports Centre, Durban',
+    status: 'scheduled',
+    period: 1,
+    clockSeconds: 600,
+    round: 'Round 3',
+  },
+  {
+    id: 'match-men-league-3',
+    competitionId: 'comp-league-2026',
+    homeTeamId: 'team-nwu-men',
+    awayTeamId: 'team-men',
+    tipoff: iso('2026-11-16T16:00:00+02:00'),
+    venue: 'NWU Arena, Potchefstroom',
+    status: 'scheduled',
+    period: 1,
+    clockSeconds: 600,
+    round: 'Round 4',
+  },
+  {
+    id: 'match-men-league-4',
+    competitionId: 'comp-league-2026',
+    homeTeamId: 'team-men',
+    awayTeamId: 'team-ufs-men',
+    tipoff: iso('2026-11-22T19:00:00+02:00'),
+    venue: 'DUT Sports Centre, Durban',
+    status: 'scheduled',
+    period: 1,
+    clockSeconds: 600,
+    round: 'Round 5',
+  },
+  {
+    id: 'match-women-ussa-1',
+    competitionId: 'comp-ussa-2026',
+    homeTeamId: 'team-women',
+    awayTeamId: 'team-ukzn-women',
+    tipoff: iso('2026-10-19T16:00:00+02:00'),
+    venue: 'DUT Sports Centre, Durban',
+    status: 'completed',
+    period: 4,
+    clockSeconds: 0,
+    round: 'Group B',
+    seed: 67,
+  },
+  {
+    id: 'match-women-ussa-2',
+    competitionId: 'comp-ussa-2026',
+    homeTeamId: 'team-wits-women',
+    awayTeamId: 'team-women',
+    tipoff: iso('2026-10-22T14:00:00+02:00'),
+    venue: 'Wits Sports Hall, Johannesburg',
+    status: 'completed',
+    period: 4,
+    clockSeconds: 0,
+    round: 'Group B',
+    seed: 71,
+  },
+  {
+    id: 'match-women-ussa-3',
+    competitionId: 'comp-ussa-2026',
+    homeTeamId: 'team-women',
+    awayTeamId: 'team-uj-women',
+    tipoff: iso('2026-10-25T18:00:00+02:00'),
+    venue: 'DUT Sports Centre, Durban',
+    status: 'completed',
+    period: 4,
+    clockSeconds: 0,
+    round: 'Final',
+    seed: 83,
+  },
+  {
+    id: 'match-women-league-1',
+    competitionId: 'comp-league-2026',
+    homeTeamId: 'team-women',
+    awayTeamId: 'team-tut-women',
+    tipoff: iso('2026-11-14T17:30:00+02:00'),
+    venue: 'DUT Sports Centre, Durban',
+    status: 'scheduled',
+    period: 1,
+    clockSeconds: 600,
+    round: 'Round 2',
+  },
+  {
+    id: 'match-women-league-2',
+    competitionId: 'comp-league-2026',
+    homeTeamId: 'team-cput-women',
+    awayTeamId: 'team-women',
+    tipoff: iso('2026-11-19T18:00:00+02:00'),
+    venue: 'CPUT Sports Hall, Cape Town',
+    status: 'scheduled',
+    period: 1,
+    clockSeconds: 600,
+    round: 'Round 3',
+  },
+  {
+    id: 'match-women-league-3',
+    competitionId: 'comp-league-2026',
+    homeTeamId: 'team-women',
+    awayTeamId: 'team-nwu-women',
+    tipoff: iso('2026-11-23T15:00:00+02:00'),
+    venue: 'DUT Sports Centre, Durban',
+    status: 'scheduled',
+    period: 1,
+    clockSeconds: 600,
+    round: 'Round 4',
+  },
+]
+
+/** The one completed match intentionally left awaiting its report. */
+const PENDING_REPORT_MATCH = 'match-men-league-1'
+
+export const seedMatches: Match[] = matchSeeds.map((seed) => ({
+  id: seed.id,
+  competitionId: seed.competitionId,
+  seasonId: 'season-2026',
+  homeTeamId: seed.homeTeamId,
+  awayTeamId: seed.awayTeamId,
+  venue: seed.venue,
+  tipoff: seed.tipoff,
+  status: seed.status,
+  period: seed.period,
+  clockSeconds: seed.clockSeconds,
+  publicVisible: true,
+  round: seed.round,
+  reportRequired: true,
+  adminComplete: seed.status === 'completed' ? seed.id !== PENDING_REPORT_MATCH : false,
+}))
+
+function buildRoster(match: Match, teamId: string, rotationOffset: number): MatchRoster[] {
+  const squad = seedPlayers.filter((player) => player.teamId === teamId && player.isActive)
+  return squad.map((player, index) => ({
+    id: `${match.id}_${teamId}_${player.id}`,
+    matchId: match.id,
+    teamId,
+    playerId: player.id,
+    jerseyNumber: player.jerseyNumber,
+    isStarter: squad.length > 0 && (index + rotationOffset) % squad.length < 5,
+    isActive: true,
+  }))
+}
+
+export const seedRosters: MatchRoster[] = seedMatches.flatMap((match, matchIndex) => [
+  ...buildRoster(match, match.homeTeamId, matchIndex),
+  ...buildRoster(match, match.awayTeamId, matchIndex + 2),
+])
+
+export const seedEvents: MatchEvent[] = matchSeeds.flatMap((seed, index) => {
+  if (seed.status === 'scheduled') return []
+  const match = seedMatches[index]!
+  const homeRoster = seedRosters.filter(
+    (entry) => entry.matchId === match.id && entry.teamId === match.homeTeamId,
+  )
+  const awayRoster = seedRosters.filter(
+    (entry) => entry.matchId === match.id && entry.teamId === match.awayTeamId,
+  )
+  return simulateMatch({
+    matchId: match.id,
+    homeTeamId: match.homeTeamId,
+    awayTeamId: match.awayTeamId,
+    homeRoster,
+    awayRoster,
+    seed: seed.seed ?? index + 1,
+    ...(seed.live
+      ? { throughPeriod: 3, minClockInFinalPeriod: seed.clockSeconds }
+      : { throughPeriod: 4 }),
+  })
+})
+
+/** Demo-only access codes. Production verification must happen server-side. */
+export const demoAccessCodes: Record<string, { playerId: string; code: string; pin: string }> = {
+  'WOLVES-10': { playerId: 'men-10', code: 'WOLVES-10', pin: '2468' },
+  'WOLVES-01': { playerId: 'women-01', code: 'WOLVES-01', pin: '1357' },
+}
+
+/* ------------------------------------------------------------------ */
+/* Competition registrations                                          */
+/* ------------------------------------------------------------------ */
+
+export const seedRegistrations: PlayerRegistration[] = [
+  ...womenRoster.map<PlayerRegistration>((entry) => ({
+    id: `reg-${entry.id}-comp-league-2026`,
+    playerId: entry.id,
+    teamId: entry.teamId,
+    competitionId: 'comp-league-2026',
+    seasonId: 'season-2026',
+    status: 'registered',
+    registeredAt: iso('2026-10-01T09:00:00+02:00'),
+    registeredByUserId: 'user-manager-women',
+  })),
+  ...menRoster.map<PlayerRegistration>((entry) => ({
+    id: `reg-${entry.id}-comp-league-2026`,
+    playerId: entry.id,
+    teamId: entry.teamId,
+    competitionId: 'comp-league-2026',
+    seasonId: 'season-2026',
+    status: 'registered',
+    registeredAt: iso('2026-10-01T09:00:00+02:00'),
+    registeredByUserId: 'user-manager-men',
+  })),
+]
+
+/* ------------------------------------------------------------------ */
+/* Post-match reports                                                 */
+/* ------------------------------------------------------------------ */
+
+function playerLabel(playerId: string): string {
+  const player = seedPlayers.find((entry) => entry.id === playerId)
+  return player ? `${player.firstName} ${player.lastName}` : playerId
+}
+
+function injury(
+  id: string,
+  playerId: string,
+  description: string,
+  period: number,
+  timeLabel: string,
+  options: Partial<InjuryEntry> = {},
+): InjuryEntry {
+  return {
+    id,
+    playerId,
+    playerName: playerLabel(playerId),
+    description,
+    period,
+    timeLabel,
+    continuedPlaying: false,
+    substitutedDueToInjury: true,
+    medicalAttention: true,
+    followUpNotes: '',
+    ...options,
+  }
+}
+
+function noInjuryReport(
+  matchId: string,
+  teamId: string,
+  managerId: string,
+  managerName: string,
+  submittedAt: string,
+): PostMatchTeamReport {
+  return {
+    id: `report-${matchId}-${teamId}`,
+    matchId,
+    teamId,
+    managerId,
+    managerName,
+    injuriesReported: false,
+    noInjuriesConfirmed: true,
+    injuries: [],
+    additionalNotes: '',
+    status: 'submitted',
+    submittedAt,
+    submittedByUserId: managerId,
+    submittedByName: managerName,
+    amendments: [],
+  }
+}
+
+export const seedReports: PostMatchTeamReport[] = [
+  noInjuryReport(
+    'match-men-ussa-1',
+    'team-men',
+    'user-manager-men',
+    'Nokwanda Zulu',
+    iso('2026-10-18T21:10:00+02:00'),
+  ),
+  noInjuryReport(
+    'match-men-ussa-2',
+    'team-men',
+    'user-manager-men',
+    'Nokwanda Zulu',
+    iso('2026-10-21T19:40:00+02:00'),
+  ),
+  {
+    id: 'report-match-men-ussa-3-team-men',
+    matchId: 'match-men-ussa-3',
+    teamId: 'team-men',
+    managerId: 'user-manager-men',
+    managerName: 'Nokwanda Zulu',
+    injuriesReported: true,
+    noInjuriesConfirmed: false,
+    injuries: [
+      injury(
+        'inj-men-ussa-3-1',
+        'men-05',
+        'Rolled right ankle contesting a rebound. Taped and iced by the medical team.',
+        3,
+        'Q3 06:42',
+        {
+          continuedPlaying: false,
+          substitutedDueToInjury: true,
+          medicalAttention: true,
+          followUpNotes: 'Physiotherapy review booked for Monday. Availability to be reassessed.',
+        },
+      ),
+    ],
+    additionalNotes: 'Match played in good spirit. Opponent coaching staff commended the officials.',
+    status: 'submitted',
+    submittedAt: iso('2026-10-24T22:05:00+02:00'),
+    submittedByUserId: 'user-manager-men',
+    submittedByName: 'Nokwanda Zulu',
+    amendments: [],
+  },
+  noInjuryReport(
+    'match-women-ussa-1',
+    'team-women',
+    'user-manager-women',
+    'Sihle Gumede',
+    iso('2026-10-19T19:10:00+02:00'),
+  ),
+  noInjuryReport(
+    'match-women-ussa-2',
+    'team-women',
+    'user-manager-women',
+    'Sihle Gumede',
+    iso('2026-10-22T17:05:00+02:00'),
+  ),
+  {
+    id: 'report-match-women-ussa-3-team-women',
+    matchId: 'match-women-ussa-3',
+    teamId: 'team-women',
+    managerId: 'user-manager-women',
+    managerName: 'Sihle Gumede',
+    injuriesReported: true,
+    noInjuriesConfirmed: false,
+    injuries: [
+      injury(
+        'inj-women-ussa-3-1',
+        'women-09',
+        'Knocked knee while setting a screen. Continued after treatment but was rotated out late.',
+        4,
+        'Q4 03:18',
+        {
+          continuedPlaying: true,
+          substitutedDueToInjury: false,
+          medicalAttention: true,
+          followUpNotes: 'Cleared to return. Ice applied after the final whistle.',
+        },
+      ),
+    ],
+    additionalNotes: 'Final won by DUT Wolves Women. Trophy presentation followed the match.',
+    status: 'submitted',
+    submittedAt: iso('2026-10-25T21:15:00+02:00'),
+    submittedByUserId: 'user-manager-women',
+    submittedByName: 'Sihle Gumede',
+    amendments: [],
+  },
+]
+
+/* ------------------------------------------------------------------ */
+/* Change requests                                                    */
+/* ------------------------------------------------------------------ */
+
+export const seedChangeRequests: TeamChangeRequest[] = [
+  {
+    id: 'req-men-jersey-1',
+    teamId: 'team-men',
+    type: 'jersey_number',
+    playerId: 'men-10',
+    playerName: 'Siyathuthuka Mabaso',
+    currentValue: null,
+    requestedValue: '7',
+    reason: 'Player has worn 7 throughout preseason and the number is free in the verified squad list.',
+    submittedByUserId: 'user-coach-men-1',
+    submittedByName: 'Coach Mtu',
+    submittedAt: iso('2026-11-06T09:20:00+02:00'),
+    status: 'pending',
+    managerNotifiedAt: iso('2026-11-06T09:20:00+02:00'),
+  },
+  {
+    id: 'req-women-position-1',
+    teamId: 'team-women',
+    type: 'position',
+    playerId: 'women-02',
+    playerName: 'Ayajabula Isithandile Mthethwa',
+    currentValue: null,
+    requestedValue: 'PG',
+    reason: 'Primary ball-handler in training and preseason fixtures. Requesting point guard as primary position.',
+    submittedByUserId: 'user-coach-women-1',
+    submittedByName: 'Coach Zothani',
+    submittedAt: iso('2026-11-07T14:05:00+02:00'),
+    status: 'pending',
+    managerNotifiedAt: iso('2026-11-07T14:05:00+02:00'),
+  },
+]
+
+/* ------------------------------------------------------------------ */
+/* Notifications                                                      */
+/* ------------------------------------------------------------------ */
+
+export const seedNotifications: AppNotification[] = [
+  {
+    id: 'notif-men-req-1',
+    userId: 'user-manager-men',
+    kind: 'change_request',
+    title: 'New change request',
+    body: 'Coach Mtu requested jersey #7 for Siyathuthuka Mabaso.',
+    link: '/manager/requests',
+    createdAt: iso('2026-11-06T09:20:00+02:00'),
+  },
+  {
+    id: 'notif-women-req-1',
+    userId: 'user-manager-women',
+    kind: 'change_request',
+    title: 'New change request',
+    body: 'Coach Zothani requested PG as the primary position for Ayajabula Isithandile Mthethwa.',
+    link: '/manager/requests',
+    createdAt: iso('2026-11-07T14:05:00+02:00'),
+  },
+  {
+    id: 'notif-men-report-1',
+    userId: 'user-manager-men',
+    kind: 'report',
+    title: 'Post-match report outstanding',
+    body: 'The match report for TUT Vikings vs DUT Wolves Men (1 Nov 2026) has not been submitted.',
+    link: '/manager/reports',
+    createdAt: iso('2026-11-02T08:00:00+02:00'),
+  },
+  {
+    id: 'notif-women-report-1',
+    userId: 'user-manager-women',
+    kind: 'report',
+    title: 'Post-match report outstanding',
+    body: 'The match report for DUT Wolves Women vs UJ Lions Women (25 Oct 2026) has been submitted.',
+    link: '/manager/reports',
+    createdAt: iso('2026-10-25T21:15:00+02:00'),
+    readAt: iso('2026-10-26T08:00:00+02:00'),
+  },
+]
+
+/* ------------------------------------------------------------------ */
+/* Audit                                                              */
+/* ------------------------------------------------------------------ */
+
+export const seedAudit: AuditEntry[] = [
+  {
+    id: 'audit-import-men',
+    entityType: 'team',
+    entityId: 'team-men',
+    action: 'create',
+    actorUserId: 'user-manager-men',
+    actorName: 'Nokwanda Zulu',
+    actorRole: 'manager',
+    summary: 'Imported 16 men’s squad players from the official roster. Jersey numbers and positions left unassigned.',
+    createdAt: iso('2026-09-01T08:05:00+02:00'),
+  },
+  {
+    id: 'audit-import-women',
+    entityType: 'team',
+    entityId: 'team-women',
+    action: 'create',
+    actorUserId: 'user-manager-women',
+    actorName: 'Sihle Gumede',
+    actorRole: 'manager',
+    summary: 'Imported 20 women’s squad players from the official roster. Jersey numbers and positions left unassigned.',
+    createdAt: iso('2026-09-01T08:06:00+02:00'),
+  },
+  {
+    id: 'audit-request-men-1',
+    entityType: 'change_request',
+    entityId: 'req-men-jersey-1',
+    action: 'submit',
+    actorUserId: 'user-coach-men-1',
+    actorName: 'Coach Mtu',
+    actorRole: 'coach',
+    summary: 'Submitted a jersey number change request for Siyathuthuka Mabaso.',
+    createdAt: iso('2026-11-06T09:20:00+02:00'),
+  },
+  {
+    id: 'audit-request-women-1',
+    entityType: 'change_request',
+    entityId: 'req-women-position-1',
+    action: 'submit',
+    actorUserId: 'user-coach-women-1',
+    actorName: 'Coach Zothani',
+    actorRole: 'coach',
+    summary: 'Submitted a primary position change request for Ayajabula Isithandile Mthethwa.',
+    createdAt: iso('2026-11-07T14:05:00+02:00'),
+  },
+]
+
+/* ------------------------------------------------------------------ */
+/* Media                                                              */
+/* ------------------------------------------------------------------ */
+
+export const seedMediaAssets: MediaAsset[] = [
+  {
+    id: 'media-player-men-10',
+    title: 'Siyathuthuka Mabaso portrait',
+    caption: 'Preseason portrait, DUT Sports Centre.',
+    description: 'Official player portrait placeholder. Replace with approved photography.',
+    category: 'player_profile',
+    status: 'published',
+    teamId: 'team-men',
+    playerId: 'men-10',
+    url: '/media/player-placeholder.svg',
+    thumbnailUrl: '/media/player-placeholder.svg',
+    cloudinaryFolder: 'player-profiles',
+    uploadedBy: 'user-media-1',
+    uploadedByName: 'Olwethu Hoyana',
+    uploadedAt: iso('2026-10-01T10:00:00+02:00'),
+    publishedAt: iso('2026-10-02T08:00:00+02:00'),
+    tags: ['men', 'portrait', 'preseason'],
+    featured: false,
+  },
+  {
+    id: 'media-player-women-02',
+    title: 'Ayajabula Isithandile Mthethwa portrait',
+    caption: 'Preseason portrait, Durban campus.',
+    category: 'player_profile',
+    status: 'published',
+    teamId: 'team-women',
+    playerId: 'women-02',
+    url: '/media/player-placeholder.svg',
+    thumbnailUrl: '/media/player-placeholder.svg',
+    cloudinaryFolder: 'player-profiles',
+    uploadedBy: 'user-media-1',
+    uploadedByName: 'Olwethu Hoyana',
+    uploadedAt: iso('2026-10-01T10:05:00+02:00'),
+    publishedAt: iso('2026-10-02T08:00:00+02:00'),
+    tags: ['women', 'portrait', 'preseason'],
+    featured: false,
+  },
+  {
+    id: 'media-team-men',
+    title: 'DUT Wolves Men squad photograph',
+    caption: '2026 USSA squad, Durban.',
+    description: 'Official 2026 men’s squad photograph placeholder.',
+    category: 'team_photo',
+    status: 'published',
+    teamId: 'team-men',
+    url: '/media/team-placeholder.svg',
+    thumbnailUrl: '/media/team-placeholder.svg',
+    cloudinaryFolder: 'team-photos',
+    uploadedBy: 'user-media-1',
+    uploadedByName: 'Olwethu Hoyana',
+    uploadedAt: iso('2026-09-20T10:00:00+02:00'),
+    publishedAt: iso('2026-09-21T08:00:00+02:00'),
+    tags: ['men', 'squad', 'ussa'],
+    featured: true,
+  },
+  {
+    id: 'media-team-women',
+    title: 'DUT Wolves Women squad photograph',
+    caption: '2026 USSA squad, Durban.',
+    description: 'Official 2026 women’s squad photograph placeholder.',
+    category: 'team_photo',
+    status: 'published',
+    teamId: 'team-women',
+    url: '/media/team-placeholder.svg',
+    thumbnailUrl: '/media/team-placeholder.svg',
+    cloudinaryFolder: 'team-photos',
+    uploadedBy: 'user-media-1',
+    uploadedByName: 'Olwethu Hoyana',
+    uploadedAt: iso('2026-09-20T10:10:00+02:00'),
+    publishedAt: iso('2026-09-21T08:00:00+02:00'),
+    tags: ['women', 'squad', 'ussa'],
+    featured: true,
+  },
+  {
+    id: 'media-gallery-men-ussa-3',
+    title: 'Semi-final gallery · DUT Wolves Men vs UJ Lions',
+    caption: 'Semi-final night at the DUT Sports Centre.',
+    category: 'match_gallery',
+    status: 'published',
+    teamId: 'team-men',
+    matchId: 'match-men-ussa-3',
+    competitionId: 'comp-ussa-2026',
+    url: '/media/team-placeholder.svg',
+    thumbnailUrl: '/media/team-placeholder.svg',
+    cloudinaryFolder: 'match-galleries',
+    uploadedBy: 'user-media-1',
+    uploadedByName: 'Olwethu Hoyana',
+    uploadedAt: iso('2026-10-25T09:00:00+02:00'),
+    publishedAt: iso('2026-10-25T12:00:00+02:00'),
+    tags: ['men', 'gallery', 'semi-final'],
+    featured: false,
+  },
+  {
+    id: 'media-poster-round2',
+    title: 'Round 2 match poster',
+    caption: 'DUT Wolves Men vs UKZN Impi.',
+    description: 'Match-day poster placeholder for the Round 2 league fixture.',
+    category: 'poster',
+    status: 'published',
+    teamId: 'team-men',
+    matchId: 'match-men-live',
+    competitionId: 'comp-league-2026',
+    url: '/media/poster-placeholder.svg',
+    thumbnailUrl: '/media/poster-placeholder.svg',
+    cloudinaryFolder: 'promotional-graphics',
+    uploadedBy: 'user-media-1',
+    uploadedByName: 'Olwethu Hoyana',
+    uploadedAt: iso('2026-11-05T10:00:00+02:00'),
+    publishedAt: iso('2026-11-05T12:00:00+02:00'),
+    tags: ['poster', 'round-2', 'men'],
+    featured: true,
+  },
+  {
+    id: 'media-banner-season',
+    title: '2026 season homepage banner',
+    caption: 'DUT Wolves basketball — 2026 season.',
+    category: 'homepage_banner',
+    status: 'draft',
+    teamId: undefined,
+    competitionId: 'comp-league-2026',
+    url: '/media/poster-placeholder.svg',
+    thumbnailUrl: '/media/poster-placeholder.svg',
+    cloudinaryFolder: 'homepage-banners',
+    uploadedBy: 'user-media-1',
+    uploadedByName: 'Olwethu Hoyana',
+    uploadedAt: iso('2026-11-04T10:00:00+02:00'),
+    tags: ['banner', 'season'],
+    featured: true,
+  },
+  {
+    id: 'media-graphic-women-final',
+    title: 'USSA final — full-time graphic',
+    caption: 'DUT Wolves Women — USSA 2026 finalists.',
+    category: 'promotional_graphic',
+    status: 'published',
+    teamId: 'team-women',
+    competitionId: 'comp-ussa-2026',
+    url: '/media/poster-placeholder.svg',
+    thumbnailUrl: '/media/poster-placeholder.svg',
+    cloudinaryFolder: 'promotional-graphics',
+    uploadedBy: 'user-media-1',
+    uploadedByName: 'Olwethu Hoyana',
+    uploadedAt: iso('2026-10-26T09:00:00+02:00'),
+    publishedAt: iso('2026-10-26T10:00:00+02:00'),
+    tags: ['women', 'graphic', 'final'],
+    featured: false,
+  },
+]
