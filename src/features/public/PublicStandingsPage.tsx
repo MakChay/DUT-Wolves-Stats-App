@@ -27,7 +27,7 @@ function StandingsContent({
       <PageHeader
         eyebrow="Standings"
         title={`${genderLabel(gender)} standings`}
-        description="DUT Wolves results against opponents, calculated from completed fixtures."
+        description="Full competition table, calculated from every completed fixture. DUT Wolves are highlighted."
         actions={<PublicTeamSwitch gender={gender} onChange={setGender} />}
       />
 
@@ -112,8 +112,8 @@ function StandingsContent({
           </div>
 
           <p className="rounded-card border border-line bg-surface/60 px-4 py-3 text-[11px] leading-relaxed text-ink-faint">
-            Standings are recalculated from match events on every load. A voided or corrected event changes the
-            table immediately — no manual score entry is involved.
+            DUT Wolves results are calculated from match events. Final scores for other tournament games are
+            entered by the administrator. Voided or corrected events update the table on reload.
           </p>
         </>
       )}

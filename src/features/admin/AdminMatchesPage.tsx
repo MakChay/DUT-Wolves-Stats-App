@@ -54,7 +54,11 @@ export function AdminMatchesPage() {
   const { user } = useAuth()
   const { toast } = useToast()
   const [status, setStatus] = useState('all')
+  const [scope, setScope] = useState('all')
   const [editing, setEditing] = useState<Match | 'new' | null>(null)
+  const [scoreTarget, setScoreTarget] = useState<Match | null>(null)
+  const [scoreForm, setScoreForm] = useState({ home: '', away: '' })
+  const [scoreError, setScoreError] = useState<string | null>(null)
   const [form, setForm] = useState<FixtureForm>(EMPTY_FORM)
   const [formError, setFormError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -90,7 +94,12 @@ export function AdminMatchesPage() {
     `${a.gender}-${a.name}`.localeCompare(`${b.gender}-${b.name}`),
   )
   const shown = [...data.matches]
-    .filter((match) => isDutTeamId(match.homeTeamId) || isDutTeamId(match.awayTeamId))
+    .filter(
+      (match) =>
+        scope === 'all' ||
+        isDutTeamId(match.homeTeamId) ||
+        isDutTeamId(match.awayTeamId),
+    )
     .filter((match) => status === 'all' || match.status === status)
     .sort((a, b) => b.tipoff.localeCompare(a.tipoff))
 
@@ -282,12 +291,79 @@ export function AdminMatchesPage() {
     }
   }
 
+  const openScore = (match: Match) => {
+    setScoreTarget(match)
+    setScoreForm({
+      home: match.homeScore === undefined ? '' : String(match.homeScore),
+      away: match.awayScore === undefined ? '' : String(match.awayScore),
+    })
+    setScoreError(null)
+  }
+
+  const saveScore = async () => {
+    if (!user || user.role !== 'admin' || !scoreTarget) return
+    const home = Number(scoreForm.home)
+    const away = Number(scoreForm.away)
+    if (
+      scoreForm.home.trim() === '' ||
+      scoreForm.away.trim() === '' ||
+      !Number.isInteger(home) ||
+      !Number.isInteger(away) ||
+      home < 0 ||
+      away < 0
+    ) {
+      setScoreError('Enter whole-number scores of 0 or more for both teams.')
+      return
+    }
+    setBusy(true)
+    setScoreError(null)
+    try {
+      const updated = await repositories.matches.update(scoreTarget.id, {
+        homeScore: home,
+        awayScore: away,
+        status: 'completed',
+        period: 4,
+        clockSeconds: 0,
+        adminComplete: true,
+        publicVisible: true,
+        isDraft: false,
+        scoreEnteredByUserId: user.id,
+        scoreEnteredAt: new Date().toISOString(),
+      })
+      if (!updated) throw new Error('The fixture could not be found.')
+      await recordAudit({
+        user,
+        entityType: 'match',
+        entityId: scoreTarget.id,
+        action: 'update',
+        summary: `Entered final score ${home}–${away} for ${scoreTarget.homeTeamId} vs ${scoreTarget.awayTeamId}.`,
+        before: {
+          homeScore: scoreTarget.homeScore ?? null,
+          awayScore: scoreTarget.awayScore ?? null,
+          status: scoreTarget.status,
+        },
+        after: { homeScore: home, awayScore: away, status: 'completed' },
+      })
+      toast({
+        title: 'Final score saved',
+        description: 'Standings and results now include this game.',
+        tone: 'success',
+      })
+      setScoreTarget(null)
+      await reload()
+    } catch (scoreSaveError) {
+      setScoreError(scoreSaveError instanceof Error ? scoreSaveError.message : 'Could not save the score.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
         eyebrow="Matches"
-        title="DUT Wolves matches"
-        description="Create, edit and publish fixtures involving a DUT Wolves squad. Opponents remain fixture references only."
+        title="Match administration"
+        description="Create fixtures, publish drafts, and enter final scores for tournament games that do not involve a DUT squad."
         actions={
           <Button onClick={openNew} disabled={activeCompetitions.length === 0}>
             <Plus className="h-4 w-4" aria-hidden="true" />
@@ -297,23 +373,31 @@ export function AdminMatchesPage() {
       />
 
       <Card>
-        <CardContent className="flex flex-col gap-3 pt-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="sm:w-56">
-            <Select
-              label="Filter by status"
-              value={status}
-              onValueChange={setStatus}
-              options={[
-                { value: 'all', label: 'All statuses' },
-                { value: 'scheduled', label: 'Scheduled' },
-                { value: 'live', label: 'Live' },
-                { value: 'paused', label: 'Paused' },
-                { value: 'completed', label: 'Completed' },
-              ]}
-              className="w-full"
-            />
-          </div>
-          <p className="text-[11px] text-ink-faint">{shown.length} matches shown</p>
+        <CardContent className="grid gap-3 pt-4 sm:grid-cols-[220px_220px_1fr] sm:items-end">
+          <Select
+            label="Fixture scope"
+            value={scope}
+            onValueChange={setScope}
+            options={[
+              { value: 'all', label: 'All tournament games' },
+              { value: 'dut', label: 'DUT Wolves only' },
+            ]}
+            className="w-full"
+          />
+          <Select
+            label="Filter by status"
+            value={status}
+            onValueChange={setStatus}
+            options={[
+              { value: 'all', label: 'All statuses' },
+              { value: 'scheduled', label: 'Scheduled' },
+              { value: 'live', label: 'Live' },
+              { value: 'paused', label: 'Paused' },
+              { value: 'completed', label: 'Completed' },
+            ]}
+            className="w-full"
+          />
+          <p className="pb-2 text-[11px] text-ink-faint sm:text-right">{shown.length} matches shown</p>
         </CardContent>
       </Card>
 
@@ -345,7 +429,10 @@ export function AdminMatchesPage() {
                 const home = data.teams.find((team) => team.id === match.homeTeamId)
                 const away = data.teams.find((team) => team.id === match.awayTeamId)
                 const competition = data.competitions.find((entry) => entry.id === match.competitionId)
-                const hasScore = match.status !== 'scheduled'
+                const isDut = isDutTeamId(match.homeTeamId) || isDutTeamId(match.awayTeamId)
+                const hasScore =
+                  match.status !== 'scheduled' ||
+                  (typeof match.homeScore === 'number' && typeof match.awayScore === 'number')
                 const score = matchScore(data.eventsByMatch.get(match.id) ?? [], match)
                 return (
                   <TR key={match.id}>
@@ -384,6 +471,11 @@ export function AdminMatchesPage() {
                     <TD className="max-w-[220px] truncate">{match.venue}</TD>
                     <TD>
                       <div className="flex items-center gap-1">
+                        {!isDut ? (
+                          <Button variant="secondary" size="sm" onClick={() => openScore(match)}>
+                            {typeof match.homeScore === 'number' ? 'Edit score' : 'Enter score'}
+                          </Button>
+                        ) : null}
                         <Button variant="ghost" size="sm" onClick={() => openEdit(match)}>
                           <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                           Edit
@@ -497,6 +589,60 @@ export function AdminMatchesPage() {
                 <p className="sm:col-span-2 text-xs text-danger" role="alert">{formError}</p>
               ) : null}
             </div>
+          </DialogContent>
+        ) : null}
+      </Dialog>
+
+      <Dialog open={scoreTarget !== null} onOpenChange={(open) => (!open && !busy ? setScoreTarget(null) : undefined)}>
+        {scoreTarget ? (
+          <DialogContent
+            title="Final score"
+            description="Enter the final score for this tournament game. It will be marked completed and included in the standings."
+            className="max-w-md"
+            footer={
+              <>
+                <Button variant="ghost" onClick={() => setScoreTarget(null)} disabled={busy}>Cancel</Button>
+                <Button onClick={() => void saveScore()} disabled={busy}>
+                  {busy ? 'Saving…' : 'Save final score'}
+                </Button>
+              </>
+            }
+          >
+            <div className="grid grid-cols-2 gap-3">
+              <Field
+                label={data.teams.find((team) => team.id === scoreTarget.homeTeamId)?.shortName ?? 'Home'}
+                htmlFor="score-home"
+              >
+                <Input
+                  id="score-home"
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={scoreForm.home}
+                  onChange={(event) => setScoreForm({ ...scoreForm, home: event.target.value })}
+                />
+              </Field>
+              <Field
+                label={data.teams.find((team) => team.id === scoreTarget.awayTeamId)?.shortName ?? 'Away'}
+                htmlFor="score-away"
+              >
+                <Input
+                  id="score-away"
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={scoreForm.away}
+                  onChange={(event) => setScoreForm({ ...scoreForm, away: event.target.value })}
+                />
+              </Field>
+            </div>
+            <p className="mt-3 text-[11px] leading-relaxed text-ink-faint">
+              {formatDate(scoreTarget.tipoff)} · {scoreTarget.venue}. Scores for DUT matches are recorded in the
+              Live Match Centre and cannot be typed here.
+            </p>
+            {scoreError ? (
+              <p className="mt-3 text-xs text-danger" role="alert">{scoreError}</p>
+            ) : null}
           </DialogContent>
         ) : null}
       </Dialog>

@@ -219,6 +219,14 @@ export interface Match {
   adminComplete?: boolean
   /** Imported draft fixtures stay hidden from public listings until reviewed. */
   isDraft?: boolean
+  /**
+   * Explicit final score for fixtures that do not involve a DUT squad. DUT
+   * matches derive their score from the event stream instead.
+   */
+  homeScore?: number
+  awayScore?: number
+  scoreEnteredByUserId?: string
+  scoreEnteredAt?: string
 }
 
 export interface MatchRoster {

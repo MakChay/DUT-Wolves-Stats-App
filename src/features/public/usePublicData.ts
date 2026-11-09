@@ -54,11 +54,7 @@ function derivePublicData(
   matches: Match[],
   eventsByMatch: Map<string, MatchEventData[]>,
 ): PublicData {
-  const publicMatches = matches.filter(
-    (match) =>
-      match.publicVisible &&
-      (isDutTeamId(match.homeTeamId) || isDutTeamId(match.awayTeamId)),
-  )
+  const publicMatches = matches.filter((match) => match.publicVisible)
   const completed = publicMatches.filter((match) => match.status === 'completed')
   const completedByTeam = new Map<string, Match[]>()
   completed.forEach((match) => {
@@ -128,10 +124,7 @@ async function loadPublicData(): Promise<PublicData> {
     (competition) => competition.status !== 'archived' && competition.publicVisible,
   )
   const publicMatches = matches.filter(
-    (match) =>
-      match.publicVisible &&
-      !archivedCompetitionIds.has(match.competitionId) &&
-      (isDutTeamId(match.homeTeamId) || isDutTeamId(match.awayTeamId)),
+    (match) => match.publicVisible && !archivedCompetitionIds.has(match.competitionId),
   )
   const eventLists = await Promise.all(
     publicMatches.map((match) => repositories.events.listPublicByMatch(match.id)),

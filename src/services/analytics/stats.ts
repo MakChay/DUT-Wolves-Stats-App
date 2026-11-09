@@ -153,8 +153,11 @@ export function teamScore(events: MatchEventData[], teamId: string, matchId?: st
 
 export function matchScore(
   events: MatchEventData[],
-  match: Pick<Match, 'id' | 'homeTeamId' | 'awayTeamId'>,
+  match: Pick<Match, 'id' | 'homeTeamId' | 'awayTeamId' | 'homeScore' | 'awayScore'>,
 ): { home: number; away: number } {
+  if (typeof match.homeScore === 'number' && typeof match.awayScore === 'number') {
+    return { home: match.homeScore, away: match.awayScore }
+  }
   return {
     home: teamScore(events, match.homeTeamId, match.id),
     away: teamScore(events, match.awayTeamId, match.id),

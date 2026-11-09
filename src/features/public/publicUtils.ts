@@ -24,15 +24,20 @@ export function matchesForGender(data: PublicData, gender: TeamGender): Match[] 
   return data.matches.filter((match) => ids.has(match.homeTeamId) || ids.has(match.awayTeamId))
 }
 
+/** Every published match in a gender, including opponent-vs-opponent games. */
+export function allMatchesForGender(data: PublicData, gender: TeamGender): Match[] {
+  return data.matches.filter((match) => {
+    const home = data.teamById.get(match.homeTeamId)
+    const away = data.teamById.get(match.awayTeamId)
+    return home?.gender === gender && away?.gender === gender
+  })
+}
+
 export function standingsForGender(data: PublicData, gender: TeamGender): StandingRow[] {
-  const teams = teamsForGender(data, gender)
-  const dutTeamIds = new Set(teams.map((team) => team.id))
-  const matches = matchesForGender(data, gender)
+  const matches = allMatchesForGender(data, gender)
   const involvedIds = new Set(matches.flatMap((match) => [match.homeTeamId, match.awayTeamId]))
   const involvedTeams = [...data.teamById.values()].filter((team) => involvedIds.has(team.id))
-  return buildStandings(involvedTeams, matches, flattenEvents(data)).filter((row) =>
-    dutTeamIds.has(row.teamId),
-  )
+  return buildStandings(involvedTeams, matches, flattenEvents(data))
 }
 
 export function scoreOf(data: PublicData, match: Match) {

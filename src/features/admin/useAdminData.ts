@@ -32,16 +32,17 @@ async function loadAdminData(): Promise<AdminData> {
     repositories.players.listByTeam('team-women'),
   ])
 
-  const matches = allMatches.filter(
+  const matches = allMatches
+  const dutMatches = allMatches.filter(
     (match) => isDutTeamId(match.homeTeamId) || isDutTeamId(match.awayTeamId),
   )
   const players = [...menPlayers, ...womenPlayers]
 
   const eventLists = await Promise.all(
-    matches.map((match) => repositories.events.listByMatch(match.id)),
+    dutMatches.map((match) => repositories.events.listByMatch(match.id)),
   )
   const eventsByMatch = new Map<string, MatchEvent[]>()
-  matches.forEach((match, index) => eventsByMatch.set(match.id, eventLists[index] ?? []))
+  dutMatches.forEach((match, index) => eventsByMatch.set(match.id, eventLists[index] ?? []))
 
   return { teams, users, competitions, seasons, matches, players, eventsByMatch }
 }
