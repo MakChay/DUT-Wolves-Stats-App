@@ -2,7 +2,6 @@ import { Link, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
   CalendarDays,
-  Image as ImageIcon,
   Shield,
   Trophy,
   UserRound,
@@ -16,8 +15,6 @@ import { PlayerAvatar } from '@/components/stats/player-avatar'
 import { PublicGate } from '@/features/public/PublicGate'
 import {
   genderLabel,
-  heroMediaForTeam,
-  mediaForTeam,
   scoreOf,
   standingsForGender,
 } from '@/features/public/publicUtils'
@@ -43,8 +40,6 @@ function staffFor(team: Team) {
 }
 
 function TeamDetailContent({ data, team }: { data: PublicData; team: Team }) {
-  const hero = heroMediaForTeam(data, team.id)
-  const gallery = mediaForTeam(data, team.id)
   const roster = data.players.filter((player) => player.teamId === team.id)
   const publicRoster = roster.filter((player) => player.publicVisible && player.isActive)
   const standing = standingsForGender(data, team.gender).find((row) => row.teamId === team.id)
@@ -73,10 +68,10 @@ function TeamDetailContent({ data, team }: { data: PublicData; team: Team }) {
       </div>
 
       <section className="relative overflow-hidden rounded-card border border-line bg-sidebar">
-        {hero ? (
+        {team.id === 'team-men' || team.id === 'team-women' ? (
           <img
-            src={hero.url}
-            alt={hero.caption ?? team.name}
+            src={team.gender === 'women' ? '/media/dut-wolves-women-squad.webp' : '/media/dut-wolves-men.webp'}
+            alt={`${team.name} basketball team`}
             className="absolute inset-0 h-full w-full object-cover opacity-45"
           />
         ) : null}
@@ -200,32 +195,6 @@ function TeamDetailContent({ data, team }: { data: PublicData; team: Team }) {
             </Card>
           ) : null}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Team photography</CardTitle>
-              <Badge tone="neutral">{gallery.length}</Badge>
-            </CardHeader>
-            <CardContent className="pt-3">
-              {gallery.length === 0 ? (
-                <p className="flex flex-col items-center gap-2 py-6 text-center text-xs text-ink-faint">
-                  <ImageIcon className="h-5 w-5" aria-hidden="true" />
-                  No published team photography yet.
-                </p>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {gallery.slice(0, 4).map((asset) => (
-                    <img
-                      key={asset.id}
-                      src={asset.thumbnailUrl ?? asset.url}
-                      alt={asset.caption ?? asset.title}
-                      className="aspect-square w-full rounded-control object-cover"
-                      loading="lazy"
-                    />
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
       </div>
 

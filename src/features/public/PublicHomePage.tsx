@@ -10,7 +10,7 @@ import {
   Users,
 } from 'lucide-react'
 import type { Match, Team, TeamGender } from '@/types/domain'
-import { MEDIA_CATEGORY_LABELS, jerseyLabel } from '@/types/domain'
+import { jerseyLabel } from '@/types/domain'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Scoreboard } from '@/components/stats/scoreboard'
@@ -96,17 +96,6 @@ function HomeContent({
     .filter((row) => data.teams.find((team) => team.id === row.player.teamId)?.gender === gender)
     .slice(0, 5)
 
-  const featuredMedia = (() => {
-    const teamIds = new Set(
-      data.teams.filter((team) => team.gender === gender).map((team) => team.id),
-    )
-    const relevant = data.media.filter(
-      (asset) => !asset.teamId || teamIds.has(asset.teamId),
-    )
-    const featured = relevant.filter((asset) => asset.featured)
-    return (featured.length ? featured : relevant).slice(0, 4)
-  })()
-
   const liveScore = liveMatch ? scoreOf(data, liveMatch) : null
   const liveHome = liveMatch ? data.teamById.get(liveMatch.homeTeamId) : null
   const liveAway = liveMatch ? data.teamById.get(liveMatch.awayTeamId) : null
@@ -163,6 +152,16 @@ function HomeContent({
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
               </Button>
+              <a
+                href="https://www.instagram.com/dut_wolves/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-control border border-white/20 bg-black/35 px-3 text-xs font-semibold text-white transition hover:bg-white/10"
+                aria-label="Follow DUT Wolves on Instagram (opens in a new tab)"
+              >
+                <Camera className="h-4 w-4" aria-hidden="true" />
+                <span>@dut_wolves</span>
+              </a>
             </div>
           </div>
 
@@ -388,48 +387,6 @@ function HomeContent({
         </Card>
       </section>
 
-      {featuredMedia.length > 0 ? (
-        <section className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <h2 className="text-lg font-bold tracking-tight text-ink">Inside the Wolves</h2>
-              <p className="text-xs text-ink-muted">Published photography and match-day graphics.</p>
-            </div>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/gallery">
-                View gallery
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-              </Link>
-            </Button>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {featuredMedia.map((asset) => (
-              <Link
-                key={asset.id}
-                to="/gallery"
-                className="group relative overflow-hidden rounded-card border border-line"
-              >
-                <img
-                  src={asset.thumbnailUrl ?? asset.url}
-                  alt={asset.caption ?? asset.title}
-                  className="aspect-[4/5] w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                  loading="lazy"
-                />
-                <span className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                <span className="absolute inset-x-0 bottom-0 p-2.5">
-                  <span className="block text-[10px] font-semibold uppercase tracking-wider text-accent">
-                    {MEDIA_CATEGORY_LABELS[asset.category]}
-                  </span>
-                  <span className="line-clamp-1 block text-xs font-semibold text-white">
-                    {asset.title}
-                  </span>
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
       <section className="relative grid overflow-hidden rounded-card border border-line bg-surface-raised sm:grid-cols-[0.9fr_1.1fr]">
         <div className="relative min-h-56 sm:min-h-72">
           <img
@@ -449,20 +406,22 @@ function HomeContent({
             Meet the squads, follow their progress and revisit the moments that move DUT Wolves
             basketball forward.
           </p>
-          <Button asChild variant="secondary" size="sm" className="mt-5 w-fit">
-            <Link to="/gallery">
-              See the Wolves story
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
-          </Button>
+          <a
+            href="https://www.instagram.com/dut_wolves/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-5 inline-flex h-9 w-fit items-center justify-center gap-2 rounded-control border border-line bg-surface px-3 text-xs font-semibold text-ink transition hover:border-accent/40"
+          >
+            Follow @dut_wolves
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </a>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {[
           { to: '/teams', icon: Users, title: 'Teams', detail: 'Squads, coaches and season records' },
           { to: '/players', icon: TrendingUp, title: 'Player stats', detail: 'Published scoring and shooting leaders' },
-          { to: '/gallery', icon: Camera, title: 'Gallery', detail: 'Team photography, posters and match-day graphics' },
           { to: '/standings', icon: Trophy, title: 'Standings', detail: 'Live competition table' },
         ].map((item) => (
           <Link

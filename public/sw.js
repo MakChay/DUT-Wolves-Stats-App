@@ -1,10 +1,11 @@
-const CACHE_NAME = 'dut-wolves-shell-v4'
+const CACHE_NAME = 'dut-wolves-shell-v5'
 const CACHE_PREFIX = 'dut-wolves-'
 const APP_SHELL = [
   '/',
   '/index.html',
   '/offline.html',
   '/manifest.webmanifest',
+  '/social-card.jpg',
   '/icons/favicon-32.png',
   '/icons/pwa-192.png',
   '/icons/pwa-512.png',

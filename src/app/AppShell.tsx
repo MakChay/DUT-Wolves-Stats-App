@@ -37,10 +37,10 @@ function SidebarBody({ area, onNavigate }: { area: RoleArea; onNavigate?: () => 
       </Link>
 
       <div className="border-b border-line px-3 py-3">
-        <p className="label-caps mb-1.5">Team scope</p>
+        <p className="label-caps mb-1.5">Current team</p>
         {teams.length > 0 ? (
           <Select
-            label="Team scope"
+            label="Current team"
             value={teamId ?? ''}
             onValueChange={setTeamId}
             options={teams.map((team) => ({ value: team.id, label: team.name }))}
@@ -51,6 +51,11 @@ function SidebarBody({ area, onNavigate }: { area: RoleArea; onNavigate?: () => 
             No teams assigned
           </p>
         )}
+        {teams.length > 1 ? (
+          <p className="mt-1.5 text-[10px] leading-relaxed text-ink-faint">
+            Switch the squad shown in team dashboards and tools.
+          </p>
+        ) : null}
       </div>
 
       <nav className="scroll-thin flex-1 space-y-0.5 overflow-y-auto px-2 py-3" aria-label={`${area.label} navigation`}>

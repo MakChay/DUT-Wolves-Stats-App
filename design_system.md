@@ -107,7 +107,7 @@ The app uses scoped selectors and small filter controls to keep users in context
 ## 6. UX patterns
 
 ### 6.1 Team scope pattern
-This is a key product pattern: internal users are always aware of the active team scope. The selector sits in the sidebar and informs the current context across modules.
+The authenticated sidebar's current-team selector chooses which assigned squad is shown in team-specific dashboards and tools. It is a UI context/filter, not an access-control boundary; account permissions and Firestore rules determine what data the user may access.
 
 ### 6.2 Live status pattern
 Live match states use motion and strong contrast to signal current activity. The app clearly distinguishes live match indicators from normal fixtures and results.

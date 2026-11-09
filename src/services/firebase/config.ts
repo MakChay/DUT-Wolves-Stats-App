@@ -1,10 +1,8 @@
 /**
- * Firebase and Cloudinary configuration, read from Vite environment variables.
+ * Firebase configuration, read from Vite environment variables.
  *
  * Values live in .env.local (git-ignored). Firebase web config identifies the
- * project and is not a secret; security comes from Firestore/Storage rules and
- * App Check. Cloudinary API secrets must never be placed in VITE_ variables,
- * because Vite bundles them into the public client.
+ * project and is not a secret; security comes from Firestore rules and App Check.
  */
 const env = import.meta.env
 
@@ -21,15 +19,4 @@ export const firebaseConfig = {
 
 export const isFirebaseConfigured = Boolean(
   firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId,
-)
-
-export const cloudinaryConfig = {
-  cloudName: env.VITE_CLOUDINARY_CLOUD_NAME ?? '',
-  uploadPreset: env.VITE_CLOUDINARY_UPLOAD_PRESET ?? '',
-} as const
-
-export const isCloudinaryConfigured = Boolean(cloudinaryConfig.cloudName)
-
-export const canUploadToCloudinary = Boolean(
-  cloudinaryConfig.cloudName && cloudinaryConfig.uploadPreset,
 )

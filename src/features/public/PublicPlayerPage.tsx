@@ -2,7 +2,6 @@ import { Link, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
   CalendarDays,
-  Image as ImageIcon,
   Ruler,
   Shield,
   TrendingUp,
@@ -15,7 +14,6 @@ import { PlayerAvatar } from '@/components/stats/player-avatar'
 import { Table, TableWrap, TBody, TD, TH, THead, TR } from '@/components/ui/table'
 import { PublicGate } from '@/features/public/PublicGate'
 import {
-  mediaForPlayer,
   publicAvailabilityLabel,
   scoreOf,
 } from '@/features/public/publicUtils'
@@ -64,8 +62,7 @@ function PlayerProfileContent({ data, player }: { data: PublicData; player: Publ
   })
 
   const totals = aggregate(gameLog.map((row) => row.stats))
-  const photos = mediaForPlayer(data, player.id)
-  const heroPhoto = player.photoUrl ?? photos[0]?.url
+  const heroPhoto = player.photoUrl
   const availabilityTone = AVAILABILITY_TONE[player.availability]
 
   return (
@@ -176,7 +173,7 @@ function PlayerProfileContent({ data, player }: { data: PublicData; player: Publ
         </div>
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
+      <div className="grid gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Season statistics</CardTitle>
@@ -212,32 +209,6 @@ function PlayerProfileContent({ data, player }: { data: PublicData; player: Publ
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Photo gallery</CardTitle>
-            <Badge tone="neutral">{photos.length}</Badge>
-          </CardHeader>
-          <CardContent className="pt-3">
-            {photos.length === 0 ? (
-              <p className="flex flex-col items-center gap-2 py-6 text-center text-xs text-ink-faint">
-                <ImageIcon className="h-5 w-5" aria-hidden="true" />
-                No published photography for this player yet.
-              </p>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                {photos.slice(0, 4).map((asset) => (
-                  <img
-                    key={asset.id}
-                    src={asset.thumbnailUrl ?? asset.url}
-                    alt={asset.caption ?? asset.title}
-                    className="aspect-square w-full rounded-control object-cover"
-                    loading="lazy"
-                  />
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       <Card>

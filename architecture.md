@@ -20,7 +20,7 @@ Data access is abstracted behind `repositories`. The system chooses a concrete i
 - mock repositories for local/demo development
 
 ### Storage and media
-Firestore stores application records and legacy media metadata. Media publishing is archived; existing published assets remain readable. Firebase Storage and Cloudinary upload workflows are not part of the active product scope.
+Firestore stores application records and legacy media metadata. Media publishing is archived; existing published assets remain readable. The public site links to the official Instagram profile but does not embed or import its feed. No active Cloudinary or Firebase Storage upload workflow is used.
 
 ## 3. Technical stack
 
@@ -57,7 +57,6 @@ Public routes
 - `/results`
 - `/teams`
 - `/players`
-- `/gallery` (read-only published media)
 - `/standings`
 
 Role-based protected routes
@@ -158,11 +157,13 @@ A toast context provides user-friendly feedback for actions and validation error
 
 ## 10. Archived media publishing
 
-The media-manager route and invitation role are retired. Previously published
-media remains readable on public pages, administrators may inspect existing
-records, and Firestore rejects all media writes. Existing media-manager Auth
-accounts should be disabled separately during production account cleanup; old
-profiles are recognized as legacy data but receive no workspace access.
+The media-manager route, invitation role, public gallery and upload/publishing
+workflow are retired. Existing media records remain legacy data; Firestore
+rejects media writes. Team photographs used in the public design are static
+assets bundled with the web app. Open Graph and Twitter/X previews use a
+static 1200×630 social image; metadata URLs use the canonical Vercel host.
+Existing media-manager Auth accounts should be disabled separately during
+account cleanup; legacy profiles receive no workspace access.
 
 ## 11. USSA Wits 2026 draft schedule
 

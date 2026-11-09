@@ -1,6 +1,6 @@
 # DUT Wolves Stats
 
-DUT Wolves Stats is a role-based basketball operations and public fan portal for the Durban University of Technology Wolves. It combines internal team workflows with a public-facing site for live scores, fixtures, standings, player statistics, and team media. Digital experience by QM Web Designs.
+DUT Wolves Stats is a role-based basketball operations and public fan portal for the Durban University of Technology Wolves. It combines internal team workflows with a public-facing site for live scores, fixtures, standings, and player statistics. Official team social posts are published on Instagram; a gallery/media studio is not in the active app scope. Digital experience by QM Web Designs.
 
 ## Product purpose
 
@@ -10,16 +10,17 @@ The platform helps the team manage:
 - match tracking and event capture
 - competitions and season status
 - player statistics and profile visibility
-- media assets and gallery publishing
 
 ## Key capabilities
 
-- Public pages for home, live scores, fixtures, results, standings, teams, players, and gallery
+- Public pages for home, live scores, fixtures, results, standings, teams, and players
 - Manager dashboard for operational workflows
 - Coach dashboard with analytics and change requests
 - Player dashboard for personal stats and history
 - Admin management for teams, users, competitions, and matches
-- Previously published media remains available on the public site; media-manager access and publishing are archived
+- Team photos used in the public design are bundled static assets; new media publishing is archived
+- Public pages link to the official Instagram profile, [@dut_wolves](https://www.instagram.com/dut_wolves/)
+- Open Graph and Twitter/X metadata use a branded 1200×630 share image at `public/social-card.jpg`
 - Firebase-backed data layer with optional mock mode for offline demos
 - Installable PWA app shell with cached static resources and an offline fallback
 - Wolf-branded startup and workspace loading screens
@@ -34,7 +35,7 @@ The PWA does **not** cache Firebase records or support offline scoring. Real mat
 - Vite
 - Tailwind CSS
 - Firebase Auth and Firestore
-- Read-only display of previously published media
+- No Cloudinary upload or Instagram feed integration
 - Radix UI primitives
 - React Router
 

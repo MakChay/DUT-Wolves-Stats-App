@@ -1,4 +1,4 @@
-import { Moon, Sun, Menu, X } from 'lucide-react'
+import { Moon, Sun, Menu, X, Camera } from 'lucide-react'
 import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { publicNav } from '@/app/navigation'
@@ -120,6 +120,16 @@ export function PublicLayout() {
           <p className="text-[11px] leading-relaxed text-ink-faint">
             DUT Wolves Basketball · Digital experience by QM Web Designs
           </p>
+          <a
+            href="https://www.instagram.com/dut_wolves/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-muted transition hover:text-accent"
+            aria-label="Follow DUT Wolves on Instagram (opens in a new tab)"
+          >
+            <Camera className="h-4 w-4" aria-hidden="true" />
+            @dut_wolves
+          </a>
         </div>
       </footer>
     </div>

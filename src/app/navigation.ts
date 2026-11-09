@@ -1,7 +1,6 @@
 import {
   BarChart3,
   CalendarDays,
-  Camera,
   ClipboardCheck,
   ClipboardList,
   FileText,
@@ -95,6 +94,5 @@ export const publicNav: NavItem[] = [
   { label: 'Results', to: '/results', icon: Trophy },
   { label: 'Teams', to: '/teams', icon: Users },
   { label: 'Player Stats', to: '/players', icon: BarChart3 },
-  { label: 'Gallery', to: '/gallery', icon: Camera },
   { label: 'Standings', to: '/standings', icon: FileText },
 ]

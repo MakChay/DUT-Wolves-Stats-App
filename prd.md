@@ -25,7 +25,7 @@ The product is designed for the DUT Wolves programme and covers the full lifecyc
 - Coaches need to review team performance and manage player data without relying on manual workflows.
 - Players need access to personal stats, team context, and profile information.
 - Admins need to keep system users, teams, and competition data accurate.
-- Public users want quick access to live results, standings, fixtures, and gallery content.
+- Public users want quick access to live results, standings, fixtures, and team information.
 
 ## 3. Target audience
 
@@ -109,7 +109,8 @@ The programme currently needs a consistent source of truth for team data, match 
 ### 6.5 Public content
 - The public site must show live scores, fixtures, results, standings, team pages, and player pages.
 - Public pages must use gender-specific team views.
-- Media assets must be displayable in galleries and featured sections.
+- Public pages link to the official DUT Wolves Instagram account, @dut_wolves.
+- The app does not include a public gallery, media studio, or Instagram post feed; app photography is limited to bundled static assets and existing player portrait URLs.
 
 ### 6.6 Analytics and reporting
 - Coaches and managers must access statistical summaries.
@@ -117,9 +118,8 @@ The programme currently needs a consistent source of truth for team data, match 
 - Reports must be structured for operational use rather than just raw data dumps.
 
 ### 6.7 Media management
-- Media managers must upload and manage gallery assets.
-- Media content can be associated with a team or player context.
-- Publishing workflows must support organisation and display logic.
+- Media-manager accounts and gallery/upload/publishing workflows are archived.
+- New social content is published through the official Instagram account, not through this app.
 
 ### 6.8 Installable application
 - Public users should be able to install the application where supported by their browser.
@@ -139,7 +139,7 @@ The programme currently needs a consistent source of truth for team data, match 
 - Internal roles can access correct dashboards within a few clicks.
 - Public pages load and display live content reliably.
 - Team managers and coaches can manage match/player data without manual spreadsheets.
-- Media and standings remain up-to-date across the season.
+- Standings and official schedule information remain up-to-date across the season.
 
 ## 9. Constraints and assumptions
 - The product is built around basketball team operations in a university environment.
@@ -151,7 +151,7 @@ The programme currently needs a consistent source of truth for team data, match 
 - Add richer analytics and trend charts across match windows.
 - Expand reporting exports and PDF generation.
 - Support direct live match entry from tablet devices at courtside.
-- Integrate additional media workflows, such as automatic gallery categorisation.
+- Consider a supported social feed integration only if access, permissions, and a clear product need are established.
 - Extend admin capabilities with audit logs and activity history.
 
 ## 11. Acceptance criteria
@@ -160,7 +160,7 @@ The programme currently needs a consistent source of truth for team data, match 
 - Managers and coaches can navigate to schedule, roster, and analytics views.
 - Public pages render team and player data without exposing private identifiers.
 - Match events can populate score and statistical summaries correctly.
-- Media managers can upload and publish gallery assets.
+- Public pages provide a working link to the official DUT Wolves Instagram account and do not expose a gallery route.
 
 ## 12. Summary
 
