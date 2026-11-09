@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pencil, Plus, Trophy } from 'lucide-react'
+import { Archive, ArchiveRestore, Pencil, Plus, Trophy } from 'lucide-react'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -14,7 +14,7 @@ import { useAdminData } from '@/features/admin/useAdminData'
 import { useAuth } from '@/features/auth/AuthContext'
 import { repositories } from '@/services/repositories'
 import { recordAudit } from '@/services/audit/record'
-import type { Competition, CompetitionType } from '@/types/domain'
+import type { Competition, CompetitionStatus, CompetitionType } from '@/types/domain'
 import { formatDate } from '@/utils/format'
 
 interface CompetitionForm {
@@ -25,6 +25,7 @@ interface CompetitionForm {
   startDate: string
   endDate: string
   publicVisible: boolean
+  status: CompetitionStatus
 }
 
 const EMPTY_FORM: CompetitionForm = {
@@ -35,6 +36,7 @@ const EMPTY_FORM: CompetitionForm = {
   startDate: '',
   endDate: '',
   publicVisible: false,
+  status: 'draft',
 }
 
 function toDateInput(iso: string): string {
@@ -94,6 +96,7 @@ export function AdminCompetitionsPage() {
       startDate: toDateInput(competition.startDate),
       endDate: toDateInput(competition.endDate),
       publicVisible: competition.publicVisible,
+      status: competition.status ?? (competition.publicVisible ? 'active' : 'draft'),
     })
     setFormError(null)
   }
@@ -128,7 +131,8 @@ export function AdminCompetitionsPage() {
         seasonId: form.seasonId,
         startDate: new Date(`${form.startDate}T00:00:00+02:00`).toISOString(),
         endDate: new Date(`${form.endDate}T23:59:00+02:00`).toISOString(),
-        publicVisible: form.publicVisible,
+        publicVisible: form.status === 'active',
+        status: form.status,
       }
       await repositories.competitions.upsert(competition)
       await recordAudit({
@@ -139,8 +143,10 @@ export function AdminCompetitionsPage() {
         summary: isNew
           ? `Created ${competition.name} (${competition.type}).`
           : `Updated ${competition.name}.`,
-        before: existing ? { name: existing.name, publicVisible: existing.publicVisible } : null,
-        after: { name: competition.name, publicVisible: competition.publicVisible },
+        before: existing
+          ? { name: existing.name, publicVisible: existing.publicVisible, status: existing.status ?? null }
+          : null,
+        after: { name: competition.name, publicVisible: competition.publicVisible, status: competition.status },
       })
       toast({
         title: isNew ? 'Competition created' : 'Competition saved',
@@ -153,6 +159,56 @@ export function AdminCompetitionsPage() {
       await reload()
     } catch (saveError) {
       setFormError(saveError instanceof Error ? saveError.message : 'Could not save the competition.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const setStatus = async (competition: Competition, status: CompetitionStatus) => {
+    if (!user || user.role !== 'admin') return
+    const matches = data.matches.filter((match) => match.competitionId === competition.id)
+    if (status === 'archived' && matches.some((match) => match.status === 'live' || match.status === 'paused')) {
+      toast({
+        title: 'Competition has a live match',
+        description: 'Complete or pause the live fixture before archiving.',
+        tone: 'error',
+      })
+      return
+    }
+    setBusy(true)
+    try {
+      const updated = await repositories.competitions.upsert({
+        ...competition,
+        status,
+        publicVisible: status === 'active',
+      })
+      await recordAudit({
+        user,
+        entityType: 'competition',
+        entityId: competition.id,
+        action: status === 'archived' ? 'archive' : 'update',
+        summary:
+          status === 'archived'
+            ? `Archived ${competition.name}. It is hidden from the public site.`
+            : `Restored ${competition.name}.`,
+        before: { status: competition.status ?? null, publicVisible: competition.publicVisible },
+        after: { status: updated.status, publicVisible: updated.publicVisible },
+      })
+      toast({
+        title: status === 'archived' ? 'Competition archived' : 'Competition restored',
+        description:
+          status === 'archived'
+            ? 'It is hidden from the public site. Match data is preserved.'
+            : 'It is available again.',
+        tone: 'success',
+      })
+      await reload()
+    } catch (archiveError) {
+      toast({
+        title: 'Could not update the competition',
+        description: archiveError instanceof Error ? archiveError.message : 'Try again.',
+        tone: 'error',
+      })
     } finally {
       setBusy(false)
     }
@@ -194,12 +250,44 @@ export function AdminCompetitionsPage() {
                       {formatDate(competition.endDate)}
                     </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                     <Badge tone={competition.type === 'league' ? 'accent' : 'warning'}>{competition.type}</Badge>
+                    <Badge
+                      tone={
+                        (competition.status ?? (competition.publicVisible ? 'active' : 'draft')) === 'archived'
+                          ? 'neutral'
+                          : competition.publicVisible
+                            ? 'success'
+                            : 'warning'
+                      }
+                    >
+                      {competition.status ?? (competition.publicVisible ? 'active' : 'draft')}
+                    </Badge>
                     <Button variant="ghost" size="sm" onClick={() => openEdit(competition)}>
                       <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                       Edit
                     </Button>
+                    {competition.status === 'archived' ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => void setStatus(competition, 'active')}
+                      >
+                        <ArchiveRestore className="h-3.5 w-3.5" aria-hidden="true" />
+                        Restore
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => void setStatus(competition, 'archived')}
+                      >
+                        <Archive className="h-3.5 w-3.5" aria-hidden="true" />
+                        Archive
+                      </Button>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="pt-3">
@@ -282,6 +370,19 @@ export function AdminCompetitionsPage() {
                   className="w-full"
                 />
               </Field>
+              <Field label="Status" htmlFor="comp-status">
+                <Select
+                  label="Status"
+                  value={form.status}
+                  onValueChange={(value) => setForm({ ...form, status: value as CompetitionStatus })}
+                  options={[
+                    { value: 'draft', label: 'Draft (private)' },
+                    { value: 'active', label: 'Active' },
+                    { value: 'archived', label: 'Archived (hidden)' },
+                  ]}
+                  className="w-full"
+                />
+              </Field>
               <Field label="Start date" htmlFor="comp-start">
                 <Input
                   id="comp-start"
@@ -298,15 +399,11 @@ export function AdminCompetitionsPage() {
                   onChange={(event) => setForm({ ...form, endDate: event.target.value })}
                 />
               </Field>
-              <label className="sm:col-span-2 flex cursor-pointer items-center gap-2 text-xs text-ink-muted">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 accent-[rgb(var(--color-accent))]"
-                  checked={form.publicVisible}
-                  onChange={(event) => setForm({ ...form, publicVisible: event.target.checked })}
-                />
-                Publish on the public site
-              </label>
+              <p className="sm:col-span-2 rounded-control border border-line bg-canvas/40 px-3 py-2 text-[11px] leading-relaxed text-ink-faint">
+                Visibility follows status: <span className="text-ink">active</span> competitions are published,
+                while <span className="text-ink">draft</span> and <span className="text-ink">archived</span>{' '}
+                competitions stay hidden from the public site.
+              </p>
               {formError ? (
                 <p className="sm:col-span-2 text-xs text-danger" role="alert">
                   {formError}

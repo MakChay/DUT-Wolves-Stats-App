@@ -6,6 +6,7 @@ import '@fontsource-variable/inter'
 import './index.css'
 import App from './App.tsx'
 import { ToastProvider } from '@/components/ui/toast'
+import { ErrorBoundary } from '@/components/error-boundary'
 import { AuthProvider } from '@/features/auth/AuthContext'
 import { TeamScopeProvider } from '@/features/teams/TeamScopeContext'
 import { ThemeProvider } from '@/features/theme/ThemeContext'
@@ -32,7 +33,9 @@ createRoot(document.getElementById('root')!).render(
         <TeamScopeProvider>
           <ThemeProvider>
             <ToastProvider>
-              <App />
+              <ErrorBoundary>
+                <App />
+              </ErrorBoundary>
               <Analytics />
             </ToastProvider>
           </ThemeProvider>

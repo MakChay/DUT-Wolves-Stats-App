@@ -121,9 +121,16 @@ async function loadPublicData(): Promise<PublicData> {
     }))
 
   const publicTeams = allTeams.filter((team) => isDutTeamId(team.id))
+  const archivedCompetitionIds = new Set(
+    competitions.filter((competition) => competition.status === 'archived').map((competition) => competition.id),
+  )
+  const visibleCompetitions = competitions.filter(
+    (competition) => competition.status !== 'archived' && competition.publicVisible,
+  )
   const publicMatches = matches.filter(
     (match) =>
       match.publicVisible &&
+      !archivedCompetitionIds.has(match.competitionId) &&
       (isDutTeamId(match.homeTeamId) || isDutTeamId(match.awayTeamId)),
   )
   const eventLists = await Promise.all(
@@ -137,7 +144,7 @@ async function loadPublicData(): Promise<PublicData> {
     {
       teams: publicTeams,
       players: publicPlayers,
-      competitions,
+      competitions: visibleCompetitions,
       media: publishedMedia,
       allTeams,
     },

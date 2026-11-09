@@ -4,7 +4,9 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
   onSnapshot,
+  orderBy,
   query,
   setDoc,
   updateDoc,
@@ -271,6 +273,9 @@ export const firestoreRepositories: Repositories = {
     },
     create: (match) => write(COLLECTIONS.matches, match),
     update: (id, changes) => patch<Match>(COLLECTIONS.matches, id, changes),
+    async remove(id) {
+      await deleteDoc(doc(db(), COLLECTIONS.matches, id))
+    },
   },
 
   rosters: {
@@ -524,8 +529,15 @@ export const firestoreRepositories: Repositories = {
   },
 
   audit: {
-    async list(limit = 200) {
-      return (await readAll<AuditEntry>(COLLECTIONS.audit)).sort(byDesc('createdAt')).slice(0, limit)
+    async list(maxEntries = 200) {
+      const snapshot = await getDocs(
+        query(
+          collection(db(), COLLECTIONS.audit),
+          orderBy('createdAt', 'desc'),
+          limit(maxEntries),
+        ),
+      )
+      return snapshot.docs.map((row) => fromDoc<AuditEntry>(row.id, row.data()))
     },
     async listByEntity(entityType: AuditEntityType, entityId: string) {
       return (await readWhereFields<AuditEntry>(COLLECTIONS.audit, [

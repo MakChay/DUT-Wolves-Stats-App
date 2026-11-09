@@ -6,6 +6,7 @@ import {
   FileText,
   LayoutDashboard,
   Radio,
+  ScrollText,
   Settings,
   ShieldCheck,
   Trophy,
@@ -83,6 +84,7 @@ export const roleAreas: Record<Exclude<UserRole, 'public' | 'media_manager'>, Ro
       { label: 'Users', to: '/admin/users', icon: Users },
       { label: 'Competitions', to: '/admin/competitions', icon: Trophy },
       { label: 'Matches', to: '/admin/matches', icon: CalendarDays },
+      { label: 'Audit log', to: '/admin/audit', icon: ScrollText },
     ],
   },
 }

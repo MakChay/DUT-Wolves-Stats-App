@@ -33,6 +33,7 @@ import { AdminTeamsPage } from '@/features/admin/AdminTeamsPage'
 import { AdminUsersPage } from '@/features/admin/AdminUsersPage'
 import { AdminCompetitionsPage } from '@/features/admin/AdminCompetitionsPage'
 import { AdminMatchesPage } from '@/features/admin/AdminMatchesPage'
+import { AdminAuditPage } from '@/features/admin/AdminAuditPage'
 import { PublicHomePage } from '@/features/public/PublicHomePage'
 import { PublicLivePage } from '@/features/public/PublicLivePage'
 import { PublicFixturesPage } from '@/features/public/PublicFixturesPage'
@@ -143,6 +144,7 @@ export default function App() {
         <Route path="users" element={<AdminUsersPage />} />
         <Route path="competitions" element={<AdminCompetitionsPage />} />
         <Route path="matches" element={<AdminMatchesPage />} />
+        <Route path="audit" element={<AdminAuditPage />} />
       </Route>
 
       <Route path="/index.html" element={<Navigate to="/" replace />} />

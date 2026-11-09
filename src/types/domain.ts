@@ -169,6 +169,8 @@ export interface Season {
 
 export type CompetitionType = 'league' | 'tournament'
 
+export type CompetitionStatus = 'draft' | 'active' | 'archived'
+
 export interface Competition {
   id: string
   name: string
@@ -178,6 +180,8 @@ export interface Competition {
   startDate: string
   endDate: string
   publicVisible: boolean
+  /** Drafts are private, active competitions are published, archived ones are hidden. */
+  status?: CompetitionStatus
 }
 
 export type RegistrationStatus = 'registered' | 'pending' | 'withdrawn'

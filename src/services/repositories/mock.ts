@@ -356,6 +356,13 @@ export const mockRepositories: Repositories = {
       matches = [...matches, match]
       return copy(match)
     },
+    async remove(id: string) {
+      await delay(60)
+      matches = matches.filter((match) => match.id !== id)
+      const overrides = readJson<Record<string, Partial<Match>>>(MATCH_OVERRIDES_KEY, {})
+      delete overrides[id]
+      writeJson(MATCH_OVERRIDES_KEY, overrides)
+    },
   },
 
   rosters: {
