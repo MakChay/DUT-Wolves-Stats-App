@@ -76,12 +76,12 @@ export function ManagerCompetitionsPage() {
       <PageHeader
         eyebrow="Competition management"
         title="Competitions & seasons"
-        description="Every fixture belongs to a competition and a season. Creating and editing competitions arrives in Stage 2."
+        description="Every fixture belongs to a competition and a season. Competition setup is managed by the system administrator."
       />
 
       <p className="rounded-card border border-line bg-surface/60 px-4 py-3 text-xs leading-relaxed text-ink-muted">
-        Stage 1 is read-only for competitions. New seasons, fixtures and roster editing are intentionally
-        deferred so the live match and statistics paths stay reliable first.
+        You can review competition details, fixtures and results here. Creating competitions and publishing
+        fixtures is handled by the system administrator from the admin workspace.
       </p>
 
       <div className="space-y-4">

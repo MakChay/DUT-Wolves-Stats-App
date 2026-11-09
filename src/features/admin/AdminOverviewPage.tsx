@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
-  BarChart3,
   CalendarDays,
   ShieldCheck,
   Trophy,
@@ -19,6 +18,7 @@ import { useAdminData } from '@/features/admin/useAdminData'
 import { matchScore } from '@/services/analytics/stats'
 import { dataMode } from '@/services/repositories'
 import { formatDate, formatTime } from '@/utils/format'
+import { isDutTeamId } from '@/types/domain'
 
 export function AdminOverviewPage() {
   const { data, loading, error, reload } = useAdminData()
@@ -55,13 +55,16 @@ export function AdminOverviewPage() {
   }
 
   const dutTeams = data.teams.filter((team) => team.id === 'team-men' || team.id === 'team-women')
-  const liveMatches = data.matches.filter(
+  const dutMatches = data.matches.filter(
+    (match) => isDutTeamId(match.homeTeamId) || isDutTeamId(match.awayTeamId),
+  )
+  const liveMatches = dutMatches.filter(
     (match) => match.status === 'live' || match.status === 'paused',
   )
-  const upcoming = data.matches
+  const upcoming = dutMatches
     .filter((match) => match.status === 'scheduled')
     .sort((a, b) => a.tipoff.localeCompare(b.tipoff))
-  const recent = data.matches
+  const recent = dutMatches
     .filter((match) => match.status === 'completed')
     .sort((a, b) => b.tipoff.localeCompare(a.tipoff))
 
@@ -82,7 +85,7 @@ export function AdminOverviewPage() {
         <StatCard label="Teams" value={dutTeams.length} hint="DUT Wolves men & women" icon={Users} accent />
         <StatCard label="Registered users" value={data.users.length} hint={`${data.users.filter((user) => user.role === 'player').length} player accounts`} icon={ShieldCheck} />
         <StatCard label="Competitions" value={data.competitions.length} hint={`${data.seasons.length} seasons configured`} icon={Trophy} />
-        <StatCard label="Matches" value={data.matches.length} hint={`${recent.length} completed · ${upcoming.length} scheduled`} icon={CalendarDays} />
+        <StatCard label="Matches" value={dutMatches.length} hint={`${recent.length} completed · ${upcoming.length} scheduled`} icon={CalendarDays} />
       </section>
 
       {liveMatches.length > 0 && (
@@ -122,7 +125,7 @@ export function AdminOverviewPage() {
           <CardHeader>
             <div>
               <CardTitle>Recent fixtures</CardTitle>
-              <p className="mt-0.5 text-xs text-ink-muted">Latest results across all teams</p>
+              <p className="mt-0.5 text-xs text-ink-muted">Latest DUT Wolves results against opponents</p>
             </div>
             <Button asChild variant="ghost" size="sm">
               <Link to="/admin/matches">
@@ -225,10 +228,9 @@ export function AdminOverviewPage() {
         </CardContent>
       </Card>
 
-      <p className="flex items-center gap-2 text-[11px] text-ink-faint">
-        <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" />
-        Administration is read-only in Stage 1. User creation, role assignment and competition editing arrive
-        with Firebase and Firestore security rules.
+      <p className="text-[11px] leading-relaxed text-ink-faint">
+        User accounts, roles, team scopes and competition setup are managed from Users and Competitions.
+        Every official change is recorded in the audit trail.
       </p>
     </div>
   )

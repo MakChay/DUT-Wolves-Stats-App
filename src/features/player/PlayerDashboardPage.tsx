@@ -23,6 +23,7 @@ import { Scoreboard } from '@/components/stats/scoreboard'
 import { useAuth } from '@/features/auth/AuthContext'
 import { usePlayerContext } from '@/features/player/usePlayerContext'
 import { matchScore } from '@/services/analytics/stats'
+import { jerseyLabel } from '@/types/domain'
 import { formatDate } from '@/utils/format'
 
 export function PlayerAreaGate({ children }: { children: (context: NonNullable<ReturnType<typeof usePlayerContext>['data']>) => ReactNode }) {
@@ -82,7 +83,7 @@ export function PlayerDashboardPage() {
             <PageHeader
               eyebrow={`${team.shortName} · Player dashboard`}
               title={`${player.firstName} ${player.lastName}`}
-              description={`#${player.jerseyNumber} · ${player.position}${player.heightCm ? ` · ${player.heightCm} cm` : ''} · ${totals.games} games played`}
+              description={`${jerseyLabel(player.jerseyNumber)} · ${player.position ?? 'Position unassigned'}${player.heightCm ? ` · ${player.heightCm} cm` : ''} · ${totals.games} games played`}
               actions={
                 <>
                   <Button asChild variant="secondary" size="md">
@@ -111,9 +112,9 @@ export function PlayerDashboardPage() {
                     {teamRecord.fgPct}% FG
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    <Badge tone="accent">{player.position}</Badge>
-                    <Badge tone="neutral">#{player.jerseyNumber}</Badge>
-                    <Badge tone="success">Verified demo profile</Badge>
+                    <Badge tone="accent">{player.position ?? 'Unassigned'}</Badge>
+                    <Badge tone="neutral">{jerseyLabel(player.jerseyNumber)}</Badge>
+                    <Badge tone="success">Verified profile</Badge>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 sm:w-64">

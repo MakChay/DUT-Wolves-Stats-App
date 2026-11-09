@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonCard } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { useAdminData } from '@/features/admin/useAdminData'
+import { jerseyLabel } from '@/types/domain'
 
 export function AdminTeamsPage() {
   const { data, loading, error, reload } = useAdminData()
@@ -104,7 +105,7 @@ export function AdminTeamsPage() {
                             {player.firstName} {player.lastName}
                           </p>
                           <p className="text-[9px] uppercase text-ink-faint">
-                            #{player.jerseyNumber} · {player.position}
+                            {jerseyLabel(player.jerseyNumber)} · {player.position ?? 'Unassigned'}
                           </p>
                         </div>
                       </div>
@@ -121,8 +122,8 @@ export function AdminTeamsPage() {
       </div>
 
       <p className="text-[11px] leading-relaxed text-ink-faint">
-        Opponent teams are seeded for realistic fixtures and standings. They do not have manager or coach
-        accounts linked to this team.
+        Opponent teams are registered for fixtures and standings. They do not have manager or coach accounts
+        linked to this workspace.
       </p>
     </div>
   )
