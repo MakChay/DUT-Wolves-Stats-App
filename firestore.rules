@@ -67,9 +67,12 @@ service cloud.firestore {
 
     function canManageRoster(rosterData) {
       let matchData = get(/databases/$(database)/documents/matches/$(rosterData.matchId)).data;
-      return managesTeam(rosterData.teamId)
-        && canManageMatch(matchData)
-        && rosterData.teamId in [matchData.homeTeamId, matchData.awayTeamId];
+      return canManageMatch(matchData)
+        && rosterData.teamId in [matchData.homeTeamId, matchData.awayTeamId]
+        && (
+          managesTeam(rosterData.teamId)
+          || rosterData.get('matchOnly', false) == true
+        );
     }
 
     function canManageMatchEvent(eventData) {

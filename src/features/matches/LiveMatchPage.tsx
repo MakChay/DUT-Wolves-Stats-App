@@ -36,6 +36,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonCard } from '@/components/ui/skeleton'
@@ -224,17 +225,46 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
   const homeTeam = allTeams.find((team) => team.id === initialMatch.homeTeamId) ?? ownTeam
   const awayTeam = allTeams.find((team) => team.id === initialMatch.awayTeamId) ?? opponent
 
+  const [matchRosters, setMatchRosters] = useState(rosters)
   const ownRoster = useMemo(
-    () => rosters.filter((entry) => entry.teamId === ownTeamId),
-    [rosters, ownTeamId],
+    () => matchRosters.filter((entry) => entry.teamId === ownTeamId),
+    [matchRosters, ownTeamId],
   )
-  const playerById = useMemo(() => new Map(players.map((player) => [player.id, player])), [players])
-  const playerMap = useMemo(() => buildPlayerMap(players), [players])
+  const opponentRoster = useMemo(
+    () => matchRosters.filter((entry) => entry.teamId === opponentId),
+    [matchRosters, opponentId],
+  )
+  const playerById = useMemo(() => {
+    const map = new Map(players.map((player) => [player.id, player]))
+    opponentRoster.forEach((entry) => {
+      if (!map.has(entry.playerId)) {
+        map.set(entry.playerId, {
+          id: entry.playerId,
+          teamId: opponentId,
+          firstName: '',
+          lastName: '',
+          jerseyNumber: entry.jerseyNumber,
+          position: null,
+          availability: 'active',
+          isActive: entry.isActive,
+          publicVisible: false,
+          numberOnly: true,
+        })
+      }
+    })
+    return map
+  }, [players, opponentRoster, opponentId])
+  const playerMap = useMemo(
+    () => buildPlayerMap([...playerById.values()]),
+    [playerById],
+  )
 
   const [match, setMatch] = useState<Match>(initialMatch)
   const [events, setEvents] = useState<MatchEvent[]>(initialEvents)
   const [clockSeconds, setClockSeconds] = useState(initialMatch.clockSeconds)
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
+  const [activeTeamId, setActiveTeamId] = useState(ownTeamId)
+  const [opponentJersey, setOpponentJersey] = useState('')
   const [onCourt, setOnCourt] = useState<Set<string>>(
     () => new Set(ownRoster.filter((entry) => entry.isStarter).map((entry) => entry.playerId)),
   )
@@ -293,7 +323,7 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
 
   const selectedPlayer = selectedPlayerId ? playerById.get(selectedPlayerId) ?? null : null
   const selectedStats = selectedPlayer
-    ? derivePlayerGameStats(events, selectedPlayer.id, ownTeamId, match.id)
+    ? derivePlayerGameStats(events, selectedPlayer.id, activeTeamId, match.id)
     : null
 
   const onCourtPlayers = ownRoster
@@ -305,7 +335,20 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
     .map((entry) => ({ entry, player: playerById.get(entry.playerId) }))
     .filter((row): row is { entry: MatchRoster; player: Player } => Boolean(row.player))
 
-  const ownEvents = events.filter((event) => event.teamId === ownTeamId && !event.voided)
+  const activeEvents = events.filter((event) => event.teamId === activeTeamId && !event.voided)
+  const activePlayers =
+    activeTeamId === ownTeamId
+      ? onCourtPlayers.map(({ player }) => player)
+      : opponentRoster
+          .map((entry) => playerById.get(entry.playerId))
+          .filter((player): player is Player => Boolean(player))
+  const opponentJerseyNumber = Number(opponentJersey)
+  const canAddOpponentJersey =
+    opponentJersey.trim() !== '' &&
+    Number.isInteger(opponentJerseyNumber) &&
+    opponentJerseyNumber >= 0 &&
+    opponentJerseyNumber <= 99 &&
+    !opponentRoster.some((entry) => entry.jerseyNumber === opponentJerseyNumber)
 
   const flash = (message: string) => {
     setLastAction(message)
@@ -332,7 +375,7 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
         id: uid('evt'),
         clientEventId: uid('cli'),
         matchId: match.id,
-        teamId: ownTeamId,
+        teamId: activeTeamId,
         playerId,
         type,
         period: match.period,
@@ -343,7 +386,10 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
       }
       setEvents((current) => [event, ...current])
       setSyncing(true)
-      flash(player ? `${jerseyLabel(player.jerseyNumber)} ${player.firstName} ${player.lastName} — ${EVENT_LABELS[type]}` : EVENT_LABELS[type])
+      const playerLabel = player
+        ? [jerseyLabel(player.jerseyNumber), player.firstName, player.lastName].filter(Boolean).join(' ')
+        : ''
+      flash(playerLabel ? `${playerLabel} — ${EVENT_LABELS[type]}` : EVENT_LABELS[type])
       repositories.events
         .record(event)
         .catch(() => {
@@ -355,12 +401,19 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
         })
         .finally(() => setSyncing(false))
     },
-    [completed, playerById, match.id, match.period, clockSeconds, ownTeamId, user?.id, toast],
+    [completed, playerById, match.id, match.period, clockSeconds, activeTeamId, user?.id, toast],
   )
 
   const handleAction = (type: MatchEventType) => {
     if (!selectedPlayerId) {
-      toast({ title: 'Select a player first', description: 'Choose an on-court player, then record the action.', tone: 'info' })
+      toast({
+        title: 'Select a player first',
+        description:
+          activeTeamId === ownTeamId
+            ? 'Choose an on-court DUT player, then record the action.'
+            : 'Add and select an opponent jersey number, then record the action.',
+        tone: 'info',
+      })
       return
     }
     record(type, selectedPlayerId)
@@ -394,7 +447,7 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
   }
 
   const undoLast = () => {
-    const target = [...ownEvents]
+    const target = [...activeEvents]
       .filter((event) => Boolean(event.playerId))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
     if (!target) {
@@ -402,6 +455,37 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
       return
     }
     void voidEvent(target, 'Undo last event')
+  }
+
+  const addOpponentJersey = async () => {
+    if (!canAddOpponentJersey || completed) return
+    const roster: MatchRoster = {
+      id: uid('roster'),
+      matchId: match.id,
+      teamId: opponentId,
+      playerId: `${match.id}_${opponentId}_jersey_${opponentJerseyNumber}`,
+      jerseyNumber: opponentJerseyNumber,
+      isStarter: false,
+      isActive: true,
+      matchOnly: true,
+    }
+    try {
+      const saved = await repositories.rosters.addOpponentPlayer(roster)
+      setMatchRosters((current) => [...current, saved])
+      setOpponentJersey('')
+      setSelectedPlayerId(saved.playerId)
+      toast({
+        title: `Opponent #${opponentJerseyNumber} added`,
+        description: 'This jersey belongs to this match only, not a team season roster.',
+        tone: 'success',
+      })
+    } catch (error) {
+      toast({
+        title: 'Could not add opponent player',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        tone: 'error',
+      })
+    }
   }
 
   const toggleClock = () => {
@@ -529,28 +613,82 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
               <div>
                 <CardTitle>Select player</CardTitle>
                 <p className="mt-0.5 text-xs text-ink-muted">
-                  On court for {ownTeam.shortName}. Tap a player, then record the action.
+                  Choose which side you are recording, then select a player or opponent jersey.
                 </p>
               </div>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setSubOpen(true)
-                  setSubOut('')
-                  setSubIn('')
-                }}
-                disabled={completed}
-              >
-                <UserRoundPlus className="h-4 w-4" aria-hidden="true" />
-                Substitution
-              </Button>
+              {activeTeamId === ownTeamId ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setSubOpen(true)
+                    setSubOut('')
+                    setSubIn('')
+                  }}
+                  disabled={completed}
+                >
+                  <UserRoundPlus className="h-4 w-4" aria-hidden="true" />
+                  Substitution
+                </Button>
+              ) : null}
             </CardHeader>
             <CardContent className="space-y-3 pt-3">
+              <div className="grid grid-cols-2 gap-2">
+                {[ownTeam, opponent].map((side) => (
+                  <button
+                    key={side.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveTeamId(side.id)
+                      setSelectedPlayerId(null)
+                    }}
+                    className={cn(
+                      'rounded-control border px-3 py-2 text-xs font-semibold transition',
+                      activeTeamId === side.id
+                        ? 'border-accent/50 bg-accent/10 text-accent'
+                        : 'border-line bg-canvas/40 text-ink-muted hover:text-ink',
+                    )}
+                    aria-pressed={activeTeamId === side.id}
+                  >
+                    {side.id === ownTeamId ? `DUT · ${side.shortName}` : `Opponent · ${side.shortName}`}
+                  </button>
+                ))}
+              </div>
+
+              {activeTeamId === opponentId ? (
+                <div className="flex items-end gap-2 rounded-control border border-line bg-canvas/30 p-2.5">
+                  <label className="min-w-0 flex-1 text-[11px] font-medium text-ink-muted" htmlFor="opponent-jersey">
+                    Add opponent jersey number
+                    <Input
+                      id="opponent-jersey"
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={99}
+                      step={1}
+                      value={opponentJersey}
+                      onChange={(event) => setOpponentJersey(event.target.value)}
+                      placeholder="e.g. 12"
+                      className="mt-1"
+                      disabled={completed}
+                    />
+                  </label>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => void addOpponentJersey()}
+                    disabled={!canAddOpponentJersey || completed}
+                  >
+                    Add
+                  </Button>
+                </div>
+              ) : null}
+
               <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-5">
-                {onCourtPlayers.map(({ player }) => {
-                  const stats = derivePlayerGameStats(events, player.id, ownTeamId, match.id)
-                  const fouledOut = stats.pf >= 5
+                {activePlayers.map((player) => {
+                  const stats = derivePlayerGameStats(events, player.id, activeTeamId, match.id)
+                  const fouledOut = activeTeamId === ownTeamId && stats.pf >= 5
+                  const playerName = [player.firstName, player.lastName].filter(Boolean).join(' ')
                   return (
                     <button
                       key={player.id}
@@ -565,12 +703,18 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
                       )}
                       aria-pressed={selectedPlayerId === player.id}
                     >
-                      <PlayerAvatar player={player} selected={selectedPlayerId === player.id} />
+                      {activeTeamId === opponentId ? (
+                        <span className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface-raised text-sm font-bold text-ink">
+                          {jerseyLabel(player.jerseyNumber)}
+                        </span>
+                      ) : (
+                        <PlayerAvatar player={player} selected={selectedPlayerId === player.id} />
+                      )}
                       <span className="w-full truncate text-center text-[11px] font-semibold text-ink">
-                        {player.lastName}
+                        {playerName || `Opponent #${player.jerseyNumber ?? '—'}`}
                       </span>
                       <span className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-ink-faint">
-                        {player.position}
+                        {activeTeamId === ownTeamId ? player.position : 'Opponent'}
                         {stats.pf > 0 ? <span className={stats.pf >= 4 ? 'text-warning' : ''}>{stats.pf} PF</span> : null}
                       </span>
                       {fouledOut ? <span className="text-[9px] font-bold text-danger">FOULED OUT</span> : null}
@@ -578,8 +722,13 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
                   )
                 })}
               </div>
+              {activeTeamId === opponentId && activePlayers.length === 0 ? (
+                <p className="rounded-control border border-dashed border-line px-3 py-3 text-center text-[11px] text-ink-faint">
+                  Add the opponent jersey numbers from the game roster to record their box score.
+                </p>
+              ) : null}
 
-              {benchPlayers.length > 0 ? (
+              {activeTeamId === ownTeamId && benchPlayers.length > 0 ? (
                 <details className="group">
                   <summary className="cursor-pointer list-none text-[11px] font-semibold uppercase tracking-wider text-ink-faint hover:text-ink-muted">
                     Bench ({benchPlayers.length}) · view
@@ -604,7 +753,9 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
               {selectedPlayer && selectedStats ? (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-control border border-accent/20 bg-accent/[0.05] px-3 py-2">
                   <span className="text-xs font-semibold text-ink">
-                    {jerseyLabel(selectedPlayer.jerseyNumber)} {selectedPlayer.firstName} {selectedPlayer.lastName}
+                    {activeTeamId === opponentId
+                      ? `Opponent ${jerseyLabel(selectedPlayer.jerseyNumber)}`
+                      : `${jerseyLabel(selectedPlayer.jerseyNumber)} ${selectedPlayer.firstName} ${selectedPlayer.lastName}`}
                   </span>
                   <span className="text-[11px] text-ink-muted">
                     {selectedStats.points} PTS · {selectedStats.reb} REB · {selectedStats.ast} AST · {selectedStats.pf} PF
@@ -625,7 +776,9 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
                 <p className="mt-0.5 text-xs text-ink-muted">
                   {selectedPlayer
                     ? `Recording for ${jerseyLabel(selectedPlayer.jerseyNumber)} ${selectedPlayer.lastName}`
-                    : 'Select an on-court player to enable the action panel'}
+                    : activeTeamId === ownTeamId
+                      ? 'Select an on-court DUT player to enable the action panel'
+                      : 'Add and select an opponent jersey to enable the action panel'}
                 </p>
               </div>
               {lastAction ? (
@@ -671,10 +824,12 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
                   <RotateCcw className="h-4 w-4" aria-hidden="true" />
                   Undo last
                 </Button>
-                <Button variant="secondary" size="md" onClick={() => setSubOpen(true)} disabled={completed}>
-                  <UserRoundPlus className="h-4 w-4" aria-hidden="true" />
-                  Substitution
-                </Button>
+                {activeTeamId === ownTeamId ? (
+                  <Button variant="secondary" size="md" onClick={() => setSubOpen(true)} disabled={completed}>
+                    <UserRoundPlus className="h-4 w-4" aria-hidden="true" />
+                    Substitution
+                  </Button>
+                ) : null}
                 <Button variant="danger" size="md" className="ml-auto" onClick={() => setEndOpen(true)} disabled={completed}>
                   <Square className="h-3.5 w-3.5" aria-hidden="true" />
                   End match
@@ -765,13 +920,13 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
               <div>
                 <CardTitle>Event history</CardTitle>
                 <p className="mt-0.5 text-xs text-ink-muted">
-                  {ownEvents.length} events · newest first · tap ↺ to void
+                  {activeEvents.length} events for {activeTeamId === ownTeamId ? ownTeam.shortName : opponent.shortName} · newest first · tap ↺ to void
                 </p>
               </div>
             </CardHeader>
             <CardContent className="pt-2">
               <EventTimeline
-                events={events.filter((event) => event.teamId === ownTeamId)}
+                events={events.filter((event) => event.teamId === activeTeamId)}
                 players={playerMap}
                 onVoid={(event) => void voidEvent(event)}
                 maxHeight="max-h-[420px]"

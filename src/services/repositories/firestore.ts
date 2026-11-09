@@ -290,6 +290,19 @@ export const firestoreRepositories: Repositories = {
         refreshLiveRoster ? [teamId] : [],
       )
     },
+    async addOpponentPlayer(roster) {
+      if (!roster.matchOnly) {
+        throw new Error('Opponent roster entries must be match-only.')
+      }
+      const existing = await readWhereFields<MatchRoster>(COLLECTIONS.rosters, [
+        ['matchId', roster.matchId],
+        ['teamId', roster.teamId],
+      ])
+      if (existing.some((entry) => entry.jerseyNumber === roster.jerseyNumber)) {
+        throw new Error('That opponent jersey number is already on this match roster.')
+      }
+      return write(COLLECTIONS.rosters, roster)
+    },
   },
 
   events: {

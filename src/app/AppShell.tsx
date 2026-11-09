@@ -37,25 +37,33 @@ function SidebarBody({ area, onNavigate }: { area: RoleArea; onNavigate?: () => 
       </Link>
 
       <div className="border-b border-line px-3 py-3">
-        <p className="label-caps mb-1.5">Current team</p>
-        {teams.length > 0 ? (
-          <Select
-            label="Current team"
-            value={teamId ?? ''}
-            onValueChange={setTeamId}
-            options={teams.map((team) => ({ value: team.id, label: team.name }))}
-            className="w-full"
-          />
-        ) : (
-          <p className="rounded-control border border-dashed border-line px-2.5 py-2 text-xs text-ink-faint">
-            No teams assigned
-          </p>
-        )}
         {teams.length > 1 ? (
-          <p className="mt-1.5 text-[10px] leading-relaxed text-ink-faint">
-            Switch the squad shown in team dashboards and tools.
-          </p>
-        ) : null}
+          <>
+            <p className="label-caps mb-1.5">DUT squad</p>
+            <Select
+              label="DUT squad"
+              value={teamId ?? ''}
+              onValueChange={setTeamId}
+              options={teams.map((team) => ({ value: team.id, label: team.name }))}
+              className="w-full"
+            />
+            <p className="mt-1.5 text-[10px] leading-relaxed text-ink-faint">
+              Choose which DUT squad to manage. Opponents are selected per match.
+            </p>
+          </>
+        ) : teams.length === 1 ? (
+          <>
+            <p className="label-caps mb-1.5">DUT squad</p>
+            <p className="truncate text-sm font-semibold text-ink">{teams[0]!.name}</p>
+          </>
+        ) : (
+          <>
+            <p className="label-caps mb-1.5">DUT squad</p>
+            <p className="rounded-control border border-dashed border-line px-2.5 py-2 text-xs text-ink-faint">
+              No DUT squads assigned
+            </p>
+          </>
+        )}
       </div>
 
       <nav className="scroll-thin flex-1 space-y-0.5 overflow-y-auto px-2 py-3" aria-label={`${area.label} navigation`}>

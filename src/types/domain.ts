@@ -219,6 +219,8 @@ export interface MatchRoster {
   jerseyNumber: number | null
   isStarter: boolean
   isActive: boolean
+  /** Opponent jersey entry created for this match; not a season player record. */
+  matchOnly?: boolean
 }
 
 export type MatchEventType =

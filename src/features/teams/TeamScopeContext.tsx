@@ -11,6 +11,7 @@ import { repositories } from '@/services/repositories'
 import { useAuth } from '@/features/auth/AuthContext'
 
 const STORAGE_KEY = 'dws.teamScope'
+const DUT_TEAM_IDS = new Set(['team-men', 'team-women'])
 
 interface TeamScopeValue {
   teams: Team[]
@@ -41,7 +42,7 @@ export function TeamScopeProvider({ children }: { children: ReactNode }) {
       if (cancelled) return
       const scoped =
         user.role === 'admin'
-          ? rows
+          ? rows.filter((team) => DUT_TEAM_IDS.has(team.id))
           : rows.filter((team) => user.teamIds.includes(team.id))
       setTeams(scoped)
       const stored = window.localStorage.getItem(STORAGE_KEY)

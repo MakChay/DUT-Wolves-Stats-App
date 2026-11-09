@@ -68,6 +68,7 @@ export interface MatchRosterRepository {
     teamId: string,
     refreshLiveRoster?: boolean,
   ): Promise<MatchRoster[]>
+  addOpponentPlayer(roster: MatchRoster): Promise<MatchRoster>
 }
 
 export interface MatchEventRepository {

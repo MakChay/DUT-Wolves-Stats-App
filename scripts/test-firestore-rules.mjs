@@ -322,6 +322,30 @@ try {
   await expectDenied(setDoc(doc(firestore, 'players/player-women-new'), rosterPlayer('team-women')), 'Manager cannot add other-team player')
   await expectDenied(deleteDoc(doc(firestore, 'players/player-women')), 'Manager cannot delete other-team player')
   await expectDenied(setDoc(doc(firestore, 'competitions/manager-test'), competitionDoc()), 'Manager cannot create competitions')
+  await expectAllowed(
+    setDoc(doc(firestore, 'matchRosters/match-men-opponent-12'), {
+      matchId: 'match-men',
+      teamId: 'opponent',
+      playerId: 'match-men-opponent-jersey-12',
+      jerseyNumber: 12,
+      isStarter: false,
+      isActive: true,
+      matchOnly: true,
+    }),
+    'Manager records an opponent jersey for their match only',
+  )
+  await expectDenied(
+    setDoc(doc(firestore, 'matchRosters/match-women-opponent-12'), {
+      matchId: 'match-women',
+      teamId: 'opponent',
+      playerId: 'match-women-opponent-jersey-12',
+      jerseyNumber: 12,
+      isStarter: false,
+      isActive: true,
+      matchOnly: true,
+    }),
+    'Manager cannot add opponent roster entries to another team match',
+  )
 
   const publicPlayerBatch = writeBatch(firestore)
   publicPlayerBatch.update(doc(firestore, 'players/player-men'), {

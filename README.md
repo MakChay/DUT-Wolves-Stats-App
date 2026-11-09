@@ -18,6 +18,7 @@ The platform helps the team manage:
 - Coach dashboard with analytics and change requests
 - Player dashboard for personal stats and history
 - Admin management for teams, users, competitions, and matches
+- Courtside scoring records event stats for DUT players and match-only opponent jersey entries; opponent entries do not become season-roster players
 - Team photos used in the public design are bundled static assets; new media publishing is archived
 - Public pages link to the official Instagram profile, [@dut_wolves](https://www.instagram.com/dut_wolves/)
 - Open Graph and Twitter/X metadata use a branded 1200×630 share image at `public/social-card.jpg`

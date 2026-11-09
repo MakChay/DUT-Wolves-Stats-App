@@ -104,6 +104,7 @@ The programme currently needs a consistent source of truth for team data, match 
 ### 6.4 Match and event tracking
 - Matches must support scheduled, live, paused, completed, and postponed states.
 - Match events must capture basketball actions such as shots, turnovers, assists, rebounds, fouls, and substitutions.
+- Managers must be able to record both DUT and opponent player events; opponent jersey entries belong only to that match and must not alter DUT player or season records.
 - Match records must support history and corrections without deleting earlier records.
 
 ### 6.5 Public content
