@@ -5,6 +5,7 @@ import type {
   Match,
   MatchEvent,
   MatchRoster,
+  MatchSnapshot,
   Player,
   PlayerRegistration,
   PostMatchReportSummary,
@@ -41,6 +42,7 @@ const REPORTS_KEY = 'dws.mock.reports.v1'
 const AUDIT_KEY = 'dws.mock.audit.v1'
 const REGISTRATIONS_KEY = 'dws.mock.registrations.v1'
 const NOTIFICATIONS_KEY = 'dws.mock.notifications.v1'
+const SNAPSHOTS_KEY = 'dws.mock.snapshots.v1'
 
 const delay = (ms = 90) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
@@ -81,6 +83,7 @@ let registrations: PlayerRegistration[] = storedRegistrations
 let notifications: AppNotification[] = storedNotifications
   ? copy(storedNotifications)
   : copy(seedNotifications)
+let snapshots: MatchSnapshot[] = readJson<MatchSnapshot[]>(SNAPSHOTS_KEY, [])
 
 function persistPlayers(): void {
   writeJson(PLAYERS_KEY, players)
@@ -104,6 +107,10 @@ function persistRegistrations(): void {
 
 function persistNotifications(): void {
   writeJson(NOTIFICATIONS_KEY, notifications)
+}
+
+function persistSnapshots(): void {
+  writeJson(SNAPSHOTS_KEY, snapshots)
 }
 
 function persistMatchEvents(matchId: string): void {
@@ -495,6 +502,33 @@ export const mockRepositories: Repositories = {
   },
 
   media: mediaRepository,
+
+  snapshots: {
+    async list() {
+      await delay(40)
+      return copy(snapshots)
+    },
+    async getByMatch(matchId: string) {
+      await delay(40)
+      const snapshot = snapshots.find((entry) => entry.matchId === matchId)
+      return snapshot ? copy(snapshot) : null
+    },
+    async listByCompetition(competitionId: string) {
+      await delay(40)
+      return copy(snapshots.filter((entry) => entry.competitionId === competitionId))
+    },
+    async capture(snapshot: MatchSnapshot) {
+      await delay(40)
+      snapshots = [snapshot, ...snapshots.filter((entry) => entry.matchId !== snapshot.matchId)]
+      persistSnapshots()
+      return copy(snapshot)
+    },
+    async removeByMatch(matchId: string) {
+      await delay(40)
+      snapshots = snapshots.filter((entry) => entry.matchId !== matchId)
+      persistSnapshots()
+    },
+  },
 
   registrations: {
     async listByTeam(teamId: string) {

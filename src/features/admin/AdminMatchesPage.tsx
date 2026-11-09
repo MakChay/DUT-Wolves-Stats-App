@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { CalendarDays, Pencil, Plus, Trash2 } from 'lucide-react'
-import type { Match } from '@/types/domain'
+import type { Match, MatchSnapshot } from '@/types/domain'
 import { isDutTeamId } from '@/types/domain'
 import { repositories } from '@/services/repositories'
 import { recordAudit } from '@/services/audit/record'
+import { captureMatchSnapshot } from '@/services/snapshots/capture'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useToast } from '@/components/ui/toast'
 import { PageHeader } from '@/components/ui/page-header'
@@ -65,6 +66,8 @@ export function AdminMatchesPage() {
   const [busy, setBusy] = useState(false)
   const [publishingId, setPublishingId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Match | null>(null)
+  const [boxScore, setBoxScore] = useState<MatchSnapshot | null>(null)
+  const [boxScoreLoadingId, setBoxScoreLoadingId] = useState<string | null>(null)
 
   if (loading) {
     return (
@@ -265,6 +268,11 @@ export function AdminMatchesPage() {
     setBusy(true)
     try {
       await repositories.matches.remove(match.id)
+      try {
+        await repositories.snapshots.removeByMatch(match.id)
+      } catch (snapshotError) {
+        console.warn('Could not remove the fixture snapshot.', snapshotError)
+      }
       await recordAudit({
         user,
         entityType: 'match',
@@ -289,6 +297,30 @@ export function AdminMatchesPage() {
       })
     } finally {
       setBusy(false)
+    }
+  }
+
+  const openBoxScore = async (match: Match) => {
+    setBoxScoreLoadingId(match.id)
+    try {
+      const snapshot = await repositories.snapshots.getByMatch(match.id)
+      if (!snapshot) {
+        toast({
+          title: 'No box score snapshot',
+          description: 'This match was completed before snapshots were enabled, or the snapshot was cleared.',
+          tone: 'info',
+        })
+        return
+      }
+      setBoxScore(snapshot)
+    } catch (boxScoreError) {
+      toast({
+        title: 'Could not load the box score',
+        description: boxScoreError instanceof Error ? boxScoreError.message : 'Try again.',
+        tone: 'error',
+      })
+    } finally {
+      setBoxScoreLoadingId(null)
     }
   }
 
@@ -333,6 +365,17 @@ export function AdminMatchesPage() {
         scoreEnteredAt: new Date().toISOString(),
       })
       if (!updated) throw new Error('The fixture could not be found.')
+      try {
+        await captureMatchSnapshot({
+          match: updated,
+          events: [],
+          players: [],
+          userId: user.id,
+          source: 'manual',
+        })
+      } catch (snapshotError) {
+        console.warn('Could not store the final score snapshot.', snapshotError)
+      }
       await recordAudit({
         user,
         entityType: 'match',
@@ -367,6 +410,11 @@ export function AdminMatchesPage() {
     try {
       const updated = await repositories.matches.clearScore(match.id)
       if (!updated) throw new Error('The fixture could not be found.')
+      try {
+        await repositories.snapshots.removeByMatch(match.id)
+      } catch (snapshotError) {
+        console.warn('Could not remove the final score snapshot.', snapshotError)
+      }
       await recordAudit({
         user,
         entityType: 'match',
@@ -513,6 +561,16 @@ export function AdminMatchesPage() {
                             {typeof match.homeScore === 'number' ? 'Edit score' : 'Enter score'}
                           </Button>
                         ) : null}
+                        {match.status === 'completed' ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={boxScoreLoadingId === match.id}
+                            onClick={() => void openBoxScore(match)}
+                          >
+                            {boxScoreLoadingId === match.id ? 'Loading…' : 'Box score'}
+                          </Button>
+                        ) : null}
                         <Button variant="ghost" size="sm" onClick={() => openEdit(match)}>
                           <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                           Edit
@@ -625,6 +683,122 @@ export function AdminMatchesPage() {
               {formError ? (
                 <p className="sm:col-span-2 text-xs text-danger" role="alert">{formError}</p>
               ) : null}
+            </div>
+          </DialogContent>
+        ) : null}
+      </Dialog>
+
+      <Dialog open={boxScore !== null} onOpenChange={(open) => (!open ? setBoxScore(null) : undefined)}>
+        {boxScore ? (
+          <DialogContent
+            title="Final box score"
+            description={`Captured ${formatDate(boxScore.capturedAt)} · ${boxScore.source === 'manual' ? 'manual score entry' : 'event stream'}`}
+            className="max-w-3xl"
+            footer={<Button variant="secondary" onClick={() => setBoxScore(null)}>Close</Button>}
+          >
+            <div className="max-h-[68vh] space-y-4 overflow-y-auto pr-1">
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-control border border-line bg-canvas/40 p-3 text-center">
+                <div>
+                  <p className="text-sm font-semibold text-ink">
+                    {data.teams.find((team) => team.id === boxScore.homeTeamId)?.shortName ?? boxScore.homeTeamId}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-ink-faint">Home</p>
+                </div>
+                <p className="stat-num text-2xl text-ink">{boxScore.homeScore}–{boxScore.awayScore}</p>
+                <div>
+                  <p className="text-sm font-semibold text-ink">
+                    {data.teams.find((team) => team.id === boxScore.awayTeamId)?.shortName ?? boxScore.awayTeamId}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-ink-faint">Away</p>
+                </div>
+              </div>
+
+              <TableWrap>
+                <Table>
+                  <THead>
+                    <tr>
+                      <TH>Team</TH>
+                      <TH className="text-center">PTS</TH>
+                      <TH className="text-center">FG</TH>
+                      <TH className="text-center">3P</TH>
+                      <TH className="text-center">FT</TH>
+                      <TH className="text-center">REB</TH>
+                      <TH className="text-center">AST</TH>
+                      <TH className="text-center">STL</TH>
+                      <TH className="text-center">BLK</TH>
+                      <TH className="text-center">TO</TH>
+                      <TH className="text-center">PF</TH>
+                    </tr>
+                  </THead>
+                  <TBody>
+                    {[
+                      { label: 'Home', stats: boxScore.homeStats },
+                      { label: 'Away', stats: boxScore.awayStats },
+                    ].map((row) => (
+                      <TR key={row.label}>
+                        <TD>
+                          {data.teams.find((team) => team.id === row.stats.teamId)?.shortName ?? row.stats.teamId}
+                        </TD>
+                        <TD className="stat-num text-center text-ink">{row.stats.points}</TD>
+                        <TD className="stat-num text-center">{row.stats.fgm}/{row.stats.fga}</TD>
+                        <TD className="stat-num text-center">{row.stats.tpm}/{row.stats.tpa}</TD>
+                        <TD className="stat-num text-center">{row.stats.ftm}/{row.stats.fta}</TD>
+                        <TD className="stat-num text-center">{row.stats.reb}</TD>
+                        <TD className="stat-num text-center">{row.stats.ast}</TD>
+                        <TD className="stat-num text-center">{row.stats.stl}</TD>
+                        <TD className="stat-num text-center">{row.stats.blk}</TD>
+                        <TD className="stat-num text-center">{row.stats.tov}</TD>
+                        <TD className="stat-num text-center">{row.stats.pf}</TD>
+                      </TR>
+                    ))}
+                  </TBody>
+                </Table>
+              </TableWrap>
+
+              {boxScore.playerStats.length > 0 ? (
+                <TableWrap>
+                  <Table>
+                    <THead>
+                      <tr>
+                        <TH>Player</TH>
+                        <TH className="text-center">PTS</TH>
+                        <TH className="text-center">REB</TH>
+                        <TH className="text-center">AST</TH>
+                        <TH className="text-center">STL</TH>
+                        <TH className="text-center">BLK</TH>
+                        <TH className="text-center">TO</TH>
+                        <TH className="text-center">PF</TH>
+                      </tr>
+                    </THead>
+                    <TBody>
+                      {[...boxScore.playerStats]
+                        .sort((a, b) => b.points - a.points)
+                        .map((row) => {
+                          const player = data.players.find((entry) => entry.id === row.playerId)
+                          return (
+                            <TR key={row.playerId}>
+                              <TD>
+                                {player ? `${player.firstName} ${player.lastName}` : row.playerId}
+                              </TD>
+                              <TD className="stat-num text-center text-ink">{row.points}</TD>
+                              <TD className="stat-num text-center">{row.reb}</TD>
+                              <TD className="stat-num text-center">{row.ast}</TD>
+                              <TD className="stat-num text-center">{row.stl}</TD>
+                              <TD className="stat-num text-center">{row.blk}</TD>
+                              <TD className="stat-num text-center">{row.tov}</TD>
+                              <TD className="stat-num text-center">{row.pf}</TD>
+                            </TR>
+                          )
+                        })}
+                    </TBody>
+                  </Table>
+                </TableWrap>
+              ) : (
+                <p className="rounded-control border border-line bg-canvas/40 px-3 py-2 text-[11px] text-ink-faint">
+                  This snapshot contains the final team score. Player-level statistics are only captured for
+                  DUT matches scored in the Live Match Centre.
+                </p>
+              )}
             </div>
           </DialogContent>
         ) : null}

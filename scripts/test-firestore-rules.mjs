@@ -380,6 +380,24 @@ try {
   )
   await expectDenied(deleteDoc(doc(firestore, 'players/player-women')), 'Manager cannot delete other-team player')
   await expectDenied(setDoc(doc(firestore, 'competitions/manager-test'), competitionDoc()), 'Manager cannot create competitions')
+  await expectAllowed(
+    setDoc(doc(firestore, 'matchSnapshots/snapshot-men'), {
+      matchId: 'match-men',
+      homeTeamId: 'team-men',
+      awayTeamId: 'opponent',
+      capturedByUserId: accounts.managerMen.uid,
+    }),
+    'Manager captures a snapshot for their own match',
+  )
+  await expectDenied(
+    setDoc(doc(firestore, 'matchSnapshots/snapshot-women'), {
+      matchId: 'match-women',
+      homeTeamId: 'team-women',
+      awayTeamId: 'opponent',
+      capturedByUserId: accounts.managerMen.uid,
+    }),
+    'Manager cannot capture a snapshot for another team',
+  )
 
   await signOut(auth)
   await signInWithEmailAndPassword(auth, accounts.managerOpponent.email, 'Local-rule-test-123!')

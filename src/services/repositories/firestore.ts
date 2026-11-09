@@ -23,6 +23,7 @@ import type {
   Match,
   MatchEvent,
   MatchRoster,
+  MatchSnapshot,
   MediaAsset,
   Player,
   PlayerRegistration,
@@ -58,6 +59,7 @@ export const COLLECTIONS = {
   competitions: 'competitions',
   seasons: 'seasons',
   matches: 'matches',
+  snapshots: 'matchSnapshots',
   rosters: 'matchRosters',
   events: 'matchEvents',
   publicEvents: 'publicMatchEvents',
@@ -289,6 +291,17 @@ export const firestoreRepositories: Repositories = {
     },
     async remove(id) {
       await deleteDoc(doc(db(), COLLECTIONS.matches, id))
+    },
+  },
+
+  snapshots: {
+    list: () => readAll<MatchSnapshot>(COLLECTIONS.snapshots),
+    getByMatch: (matchId) => readOne<MatchSnapshot>(COLLECTIONS.snapshots, matchId),
+    listByCompetition: (competitionId) =>
+      readWhere<MatchSnapshot>(COLLECTIONS.snapshots, 'competitionId', competitionId),
+    capture: (snapshot) => write(COLLECTIONS.snapshots, snapshot),
+    async removeByMatch(matchId) {
+      await deleteDoc(doc(db(), COLLECTIONS.snapshots, matchId))
     },
   },
 

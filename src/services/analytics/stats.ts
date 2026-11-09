@@ -1,6 +1,7 @@
 import type {
   Match,
   MatchEventData,
+  MatchSnapshot,
   PlayerGameStats,
   StandingRow,
   TeamGameStats,
@@ -250,6 +251,7 @@ export function buildStandings(
   teams: Team[],
   matches: Match[],
   events: MatchEventData[],
+  snapshotsByMatch?: Map<string, MatchSnapshot>,
 ): StandingRow[] {
   const rows = new Map<string, StandingRow>()
   teams.forEach((team) => {
@@ -277,7 +279,10 @@ export function buildStandings(
     const away = rows.get(match.awayTeamId)
     if (!home || !away) return
 
-    const score = matchScore(events, match)
+    const snapshot = snapshotsByMatch?.get(match.id)
+    const score = snapshot
+      ? { home: snapshot.homeScore, away: snapshot.awayScore }
+      : matchScore(events, match)
     home.played += 1
     away.played += 1
     home.pointsFor += score.home
@@ -310,7 +315,10 @@ export function buildStandings(
     const last = teamMatches[teamMatches.length - 1]
     let streak: string = '—'
     if (last) {
-      const score = matchScore(events, last)
+      const snapshot = snapshotsByMatch?.get(last.id)
+      const score = snapshot
+        ? { home: snapshot.homeScore, away: snapshot.awayScore }
+        : matchScore(events, last)
       const isHome = last.homeTeamId === row.teamId
       const won = isHome ? score.home > score.away : score.away > score.home
       streak = won ? 'W1' : 'L1'

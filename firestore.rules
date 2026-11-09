@@ -293,6 +293,14 @@ service cloud.firestore {
       allow delete: if canManageMatchEvent(resource.data);
     }
 
+    match /matchSnapshots/{matchId} {
+      // Frozen final box score. Contains no private identifiers.
+      allow read: if true;
+      allow create, update: if canManageMatch(request.resource.data)
+        && request.resource.data.capturedByUserId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
     match /media/{assetId} {
       allow read: if isAdmin() || resource.data.status == 'published';
       allow write: if false;

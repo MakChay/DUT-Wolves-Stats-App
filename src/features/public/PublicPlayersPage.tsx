@@ -10,8 +10,8 @@ import { Table, TableWrap, TBody, TD, TH, THead, TR } from '@/components/ui/tabl
 import { Badge } from '@/components/ui/badge'
 import { PublicGate } from '@/features/public/PublicGate'
 import { PublicTeamSwitch, usePublicGender } from '@/features/public/PublicTeamSwitch'
-import { genderLabel, matchesForGender } from '@/features/public/publicUtils'
-import { aggregate, derivePlayerGameStats } from '@/services/analytics/stats'
+import { genderLabel, matchesForGender, playerGameStats } from '@/features/public/publicUtils'
+import { aggregate } from '@/services/analytics/stats'
 import type { PublicData } from '@/features/public/usePublicData'
 import type { TeamGender } from '@/types/domain'
 import { jerseyLabel } from '@/types/domain'
@@ -42,12 +42,7 @@ function PlayersContent({
           (match) => match.homeTeamId === player.teamId || match.awayTeamId === player.teamId,
         )
         const perGame = teamMatches.map((match) =>
-          derivePlayerGameStats(
-            data.eventsByMatch.get(match.id) ?? [],
-            player.id,
-            player.teamId,
-            match.id,
-          ),
+          playerGameStats(data, match, player.id, player.teamId),
         )
         return { player, totals: aggregate(perGame) }
       })

@@ -3,6 +3,7 @@ import type {
   Competition,
   Match,
   MatchEventData,
+  MatchSnapshot,
   MediaAsset,
   PlayerGameStats,
   PublicPlayer,
@@ -39,6 +40,7 @@ export interface PublicData {
   upcoming: Match[]
   recent: Match[]
   eventsByMatch: Map<string, MatchEventData[]>
+  snapshotsByMatch: Map<string, MatchSnapshot>
   topScorers: PublicSeasonRow[]
   teamById: Map<string, Team>
   playerById: Map<string, PublicPlayer>
@@ -53,6 +55,7 @@ function derivePublicData(
   base: PublicDataBase,
   matches: Match[],
   eventsByMatch: Map<string, MatchEventData[]>,
+  snapshotsByMatch: Map<string, MatchSnapshot>,
 ): PublicData {
   const publicMatches = matches.filter((match) => match.publicVisible)
   const completed = publicMatches.filter((match) => match.status === 'completed')
@@ -65,9 +68,15 @@ function derivePublicData(
   const topScorers: PublicSeasonRow[] = base.players
     .map((player) => {
       const teamMatches = completedByTeam.get(player.teamId) ?? []
-      const perGame: PlayerGameStats[] = teamMatches.map((match) =>
-        derivePlayerGameStats(eventsByMatch.get(match.id) ?? [], player.id, player.teamId, match.id),
-      )
+      const perGame: PlayerGameStats[] = teamMatches.map((match) => {
+        const snapshotRow = snapshotsByMatch
+          .get(match.id)
+          ?.playerStats.find((row) => row.playerId === player.id)
+        return (
+          snapshotRow ??
+          derivePlayerGameStats(eventsByMatch.get(match.id) ?? [], player.id, player.teamId, match.id)
+        )
+      })
       return { player, perGame, totals: aggregate(perGame) }
     })
     .filter((row) => row.totals.games > 0)
@@ -83,6 +92,7 @@ function derivePublicData(
       .sort((a, b) => a.tipoff.localeCompare(b.tipoff)),
     recent: completed.sort((a, b) => b.tipoff.localeCompare(a.tipoff)),
     eventsByMatch,
+    snapshotsByMatch,
     topScorers,
     teamById: new Map((base.allTeams ?? base.teams).map((team) => [team.id, team])),
     playerById: new Map(base.players.map((player) => [player.id, player])),
@@ -92,12 +102,15 @@ function derivePublicData(
 
 async function loadPublicData(): Promise<PublicData> {
   // Public pages only ever call sanitised, publicly readable repositories.
-  const [allTeams, publicPlayersRaw, matches, competitions, media] = await Promise.all([
+  const [allTeams, publicPlayersRaw, matches, competitions, media, snapshots] = await Promise.all([
     repositories.teams.listPublic(),
     repositories.players.listPublic(),
     repositories.matches.listPublic(),
     repositories.competitions.list(),
     repositories.media.listPublished(),
+    // Snapshots are an optimisation; public pages still work if the collection
+    // is unavailable or its rules have not been deployed yet.
+    repositories.snapshots.list().catch(() => []),
   ])
 
   // Only published media is ever sent to public pages.
@@ -132,6 +145,12 @@ async function loadPublicData(): Promise<PublicData> {
   const eventsByMatch = new Map(
     publicMatches.map((match, index) => [match.id, eventLists[index] ?? []]),
   )
+  const publicMatchIds = new Set(publicMatches.map((match) => match.id))
+  const snapshotsByMatch = new Map(
+    snapshots
+      .filter((snapshot) => publicMatchIds.has(snapshot.matchId))
+      .map((snapshot) => [snapshot.matchId, snapshot]),
+  )
 
   return derivePublicData(
     {
@@ -143,6 +162,7 @@ async function loadPublicData(): Promise<PublicData> {
     },
     publicMatches,
     eventsByMatch,
+    snapshotsByMatch,
   )
 }
 
@@ -173,7 +193,9 @@ export function usePublicData() {
           const eventsByMatch = new Map<string, MatchEventData[]>()
           for (const match of matches) eventsByMatch.set(match.id, [])
           for (const event of events) eventsByMatch.get(event.matchId)?.push(event)
-          setStreamedData(derivePublicData(query.data!, matches, eventsByMatch))
+          setStreamedData(
+            derivePublicData(query.data!, matches, eventsByMatch, query.data!.snapshotsByMatch),
+          )
           setStreamError(null)
         },
         (error) => {
@@ -185,15 +207,18 @@ export function usePublicData() {
     const stopMatches = repositories.matches.subscribePublic(
       (nextMatches) => {
         if (!active) return
-        matches = nextMatches.filter(
-          (match) =>
-            match.publicVisible &&
-            (isDutTeamId(match.homeTeamId) || isDutTeamId(match.awayTeamId)),
-        )
+        matches = nextMatches.filter((match) => match.publicVisible)
         generation += 1
         const currentGeneration = generation
         setStreamedData((current) =>
-          current ? derivePublicData(query.data!, matches, current.eventsByMatch) : query.data,
+          current
+            ? derivePublicData(
+                query.data!,
+                matches,
+                current.eventsByMatch,
+                query.data!.snapshotsByMatch,
+              )
+            : query.data,
         )
         streamEvents(matches.map((match) => match.id), currentGeneration)
       },
@@ -217,5 +242,7 @@ export function usePublicData() {
 }
 
 export function scoreForMatch(data: PublicData, match: Match): { home: number; away: number } {
+  const snapshot = data.snapshotsByMatch.get(match.id)
+  if (snapshot) return { home: snapshot.homeScore, away: snapshot.awayScore }
   return matchScore(data.eventsByMatch.get(match.id) ?? [], match)
 }

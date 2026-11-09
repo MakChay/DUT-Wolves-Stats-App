@@ -3,12 +3,13 @@ import type {
   MatchEventData,
   MediaAsset,
   PlayerAvailability,
+  PlayerGameStats,
   StandingRow,
   Team,
   TeamGender,
 } from '@/types/domain'
 import { isDutTeamId } from '@/types/domain'
-import { buildStandings, matchScore } from '@/services/analytics/stats'
+import { buildStandings, derivePlayerGameStats, matchScore } from '@/services/analytics/stats'
 import type { PublicData } from './usePublicData'
 
 export function flattenEvents(data: PublicData): MatchEventData[] {
@@ -37,11 +38,29 @@ export function standingsForGender(data: PublicData, gender: TeamGender): Standi
   const matches = allMatchesForGender(data, gender)
   const involvedIds = new Set(matches.flatMap((match) => [match.homeTeamId, match.awayTeamId]))
   const involvedTeams = [...data.teamById.values()].filter((team) => involvedIds.has(team.id))
-  return buildStandings(involvedTeams, matches, flattenEvents(data))
+  return buildStandings(involvedTeams, matches, flattenEvents(data), data.snapshotsByMatch)
 }
 
 export function scoreOf(data: PublicData, match: Match) {
+  const snapshot = data.snapshotsByMatch.get(match.id)
+  if (snapshot) return { home: snapshot.homeScore, away: snapshot.awayScore }
   return matchScore(data.eventsByMatch.get(match.id) ?? [], match)
+}
+
+/** Prefer the frozen snapshot, then fall back to deriving from events. */
+export function playerGameStats(
+  data: PublicData,
+  match: Match,
+  playerId: string,
+  teamId: string,
+): PlayerGameStats {
+  const snapshotRow = data.snapshotsByMatch
+    .get(match.id)
+    ?.playerStats.find((row) => row.playerId === playerId)
+  return (
+    snapshotRow ??
+    derivePlayerGameStats(data.eventsByMatch.get(match.id) ?? [], playerId, teamId, match.id)
+  )
 }
 
 export function genderLabel(gender: TeamGender): string {

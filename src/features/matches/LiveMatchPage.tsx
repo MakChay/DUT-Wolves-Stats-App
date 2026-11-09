@@ -27,6 +27,7 @@ import type {
 } from '@/types/domain'
 import { EVENT_LABELS, EVENT_POINTS, isDutTeamId, jerseyLabel } from '@/types/domain'
 import { derivePlayerGameStats, formatClock, matchScore, teamScore } from '@/services/analytics/stats'
+import { captureMatchSnapshot } from '@/services/snapshots/capture'
 import { repositories } from '@/services/repositories'
 import { useAsync } from '@/hooks/useAsync'
 import { useTeamScope } from '@/features/teams/TeamScopeContext'
@@ -490,6 +491,18 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
     setMatch((current) => ({ ...current, status: 'completed', clockSeconds: 0 }))
     setClockSeconds(0)
     await repositories.matches.update(match.id, { status: 'completed', clockSeconds: 0 })
+    if (user) {
+      try {
+        await captureMatchSnapshot({
+          match: { ...match, status: 'completed', clockSeconds: 0 },
+          events,
+          players,
+          userId: user.id,
+        })
+      } catch (snapshotError) {
+        console.error('Could not capture the final match snapshot.', snapshotError)
+      }
+    }
     setEndOpen(false)
     if (!ownReport) {
       toast({

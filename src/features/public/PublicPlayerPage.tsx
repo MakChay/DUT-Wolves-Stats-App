@@ -14,11 +14,12 @@ import { PlayerAvatar } from '@/components/stats/player-avatar'
 import { Table, TableWrap, TBody, TD, TH, THead, TR } from '@/components/ui/table'
 import { PublicGate } from '@/features/public/PublicGate'
 import {
+  playerGameStats,
   publicAvailabilityLabel,
   scoreOf,
 } from '@/features/public/publicUtils'
 import type { PublicData } from '@/features/public/usePublicData'
-import { aggregate, derivePlayerGameStats } from '@/services/analytics/stats'
+import { aggregate } from '@/services/analytics/stats'
 import { formatDate } from '@/utils/format'
 import type { PublicPlayer } from '@/types/domain'
 
@@ -40,12 +41,7 @@ function PlayerProfileContent({ data, player }: { data: PublicData; player: Publ
     .sort((a, b) => b.tipoff.localeCompare(a.tipoff))
 
   const gameLog = matches.map((match) => {
-    const stats = derivePlayerGameStats(
-      data.eventsByMatch.get(match.id) ?? [],
-      player.id,
-      player.teamId,
-      match.id,
-    )
+    const stats = playerGameStats(data, match, player.id, player.teamId)
     const score = scoreOf(data, match)
     const isHome = match.homeTeamId === player.teamId
     const teamScore = isHome ? score.home : score.away

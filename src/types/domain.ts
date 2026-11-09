@@ -346,6 +346,30 @@ export interface TeamGameStats {
   pf: number
 }
 
+/**
+ * Frozen final box score captured when a match is completed. Used for stable
+ * historical statistics and to avoid recomputing long event streams.
+ */
+export interface MatchSnapshot {
+  /** Same as the match id. */
+  id: string
+  matchId: string
+  competitionId: string
+  seasonId: string
+  homeTeamId: string
+  awayTeamId: string
+  homeScore: number
+  awayScore: number
+  period: number
+  completedAt: string
+  capturedAt: string
+  capturedByUserId: string
+  source: 'events' | 'manual'
+  homeStats: TeamGameStats
+  awayStats: TeamGameStats
+  playerStats: PlayerGameStats[]
+}
+
 /* ------------------------------------------------------------------ */
 /* Team change requests                                                */
 /* ------------------------------------------------------------------ */

@@ -6,6 +6,7 @@ import type {
   Match,
   MatchEvent,
   MatchRoster,
+  MatchSnapshot,
   MediaAsset,
   Player,
   PlayerRegistration,
@@ -61,6 +62,14 @@ export interface MatchRepository {
   clearScore(id: string): Promise<Match | null>
   remove(id: string): Promise<void>
   subscribePublic(onChange: (matches: Match[]) => void, onError: (error: Error) => void): () => void
+}
+
+export interface SnapshotRepository {
+  list(): Promise<MatchSnapshot[]>
+  getByMatch(matchId: string): Promise<MatchSnapshot | null>
+  listByCompetition(competitionId: string): Promise<MatchSnapshot[]>
+  capture(snapshot: MatchSnapshot): Promise<MatchSnapshot>
+  removeByMatch(matchId: string): Promise<void>
 }
 
 export interface MatchRosterRepository {
@@ -150,6 +159,7 @@ export interface Repositories {
   players: PlayerRepository
   competitions: CompetitionRepository
   matches: MatchRepository
+  snapshots: SnapshotRepository
   rosters: MatchRosterRepository
   events: MatchEventRepository
   users: UserRepository
