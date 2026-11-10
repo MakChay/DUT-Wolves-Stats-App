@@ -8,6 +8,8 @@ import {
   CircleOff,
   ClipboardCheck,
   Clock,
+  Maximize2,
+  Minimize2,
   Pause,
   Play,
   Radio,
@@ -254,7 +256,9 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
   )
   const [subOut, setSubOut] = useState('')
   const [subIn, setSubIn] = useState('')
+  const [courtside, setCourtside] = useState(false)
   const actionTimer = useRef<number | null>(null)
+  const pageRef = useRef<HTMLDivElement | null>(null)
 
   const completed = match.status === 'completed'
 
@@ -482,15 +486,38 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
   }
 
   const undoLast = () => {
-    const target = [...ownEvents]
-      .filter((event) => Boolean(event.playerId))
+    const target = [...ownEvents, ...opponentScoreEvents]
+      .filter(
+        (event) =>
+          event.type !== 'SUB_IN' &&
+          event.type !== 'SUB_OUT' &&
+          event.type !== 'PERIOD_START' &&
+          event.type !== 'PERIOD_END' &&
+          event.type !== 'MATCH_END',
+      )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
     if (!target) {
-      toast({ title: 'Nothing to undo', description: 'No player events have been recorded yet.', tone: 'info' })
+      toast({
+        title: 'Nothing to undo',
+        description: 'No scoring or possession events have been recorded yet.',
+        tone: 'info',
+      })
       return
     }
     void voidEvent(target, 'Undo last event')
   }
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.shiftKey || event.key.toLowerCase() !== 'z') return
+      const target = event.target as HTMLElement | null
+      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return
+      event.preventDefault()
+      undoLast()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  })
 
   const undoOpponentScore = () => {
     const target = [...opponentScoreEvents].sort((a, b) =>
@@ -596,6 +623,46 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
     }
   }
 
+  const toggleCourtside = async () => {
+    const next = !courtside
+    setCourtside(next)
+    if (next) {
+      try {
+        await document.documentElement.requestFullscreen()
+      } catch {
+        // The fixed courtside overlay still works when the Fullscreen API is unavailable.
+      }
+    } else if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen()
+      } catch {
+        // Ignore a rejected exit; the overlay is already closing.
+      }
+    }
+  }
+
+  useEffect(() => {
+    document.body.style.overflow = courtside ? 'hidden' : ''
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [courtside])
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement) setCourtside(false)
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+  }, [])
+
+  useEffect(
+    () => () => {
+      if (document.fullscreenElement) void document.exitFullscreen()
+    },
+    [],
+  )
+
   const statusLabel = completed
     ? 'Match completed'
     : pendingCount > 0
@@ -607,8 +674,20 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
           : 'Synced'
 
   return (
-    <div className="space-y-4 pb-24 lg:pb-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div
+      ref={pageRef}
+      className={cn(
+        'space-y-4 pb-24 lg:pb-6',
+        courtside && 'fixed inset-0 z-[60] overflow-y-auto bg-canvas p-3 pb-24 sm:p-4 lg:p-6',
+      )}
+    >
+      <div
+        className={cn(
+          'flex flex-wrap items-center justify-between gap-2',
+          courtside &&
+            'sticky top-0 z-10 -mx-3 border-b border-line bg-canvas/95 px-3 py-2 backdrop-blur sm:-mx-4 sm:px-4',
+        )}
+      >
         <Button asChild variant="ghost" size="sm" className="-ml-2">
           <Link to="/manager/matches">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
@@ -625,6 +704,28 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
               Sync now
             </Button>
           ) : null}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={undoLast}
+            disabled={completed}
+            aria-label="Undo last event"
+            title="Undo last event (Ctrl+Z)"
+          >
+            <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline">Undo</span>
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void toggleCourtside()}
+            aria-pressed={courtside}
+            aria-label={courtside ? 'Exit full-screen courtside mode' : 'Open full-screen courtside mode'}
+            title={courtside ? 'Exit full-screen courtside mode' : 'Open full-screen courtside mode'}
+          >
+            {courtside ? <Minimize2 className="h-3.5 w-3.5" aria-hidden="true" /> : <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />}
+            <span className="hidden sm:inline">{courtside ? 'Exit full screen' : 'Full screen'}</span>
+          </Button>
           <Badge tone="neutral">{formatDate(initialMatch.tipoff)}</Badge>
         </div>
       </div>
