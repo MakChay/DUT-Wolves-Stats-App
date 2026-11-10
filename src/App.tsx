@@ -42,6 +42,7 @@ import { PublicTeamsPage } from '@/features/public/PublicTeamsPage'
 import { PublicTeamPage } from '@/features/public/PublicTeamPage'
 import { PublicPlayersPage } from '@/features/public/PublicPlayersPage'
 import { PublicPlayerPage } from '@/features/public/PublicPlayerPage'
+import { PublicMatchPage } from '@/features/public/PublicMatchPage'
 import { PublicStandingsPage } from '@/features/public/PublicStandingsPage'
 
 function NotFoundPage() {
@@ -67,6 +68,7 @@ export default function App() {
         <Route path="live" element={<PublicLivePage />} />
         <Route path="fixtures" element={<PublicFixturesPage />} />
         <Route path="results" element={<PublicResultsPage />} />
+        <Route path="matches/:matchId" element={<PublicMatchPage />} />
         <Route path="teams" element={<PublicTeamsPage />} />
         <Route path="teams/:teamId" element={<PublicTeamPage />} />
         <Route path="players" element={<PublicPlayersPage />} />

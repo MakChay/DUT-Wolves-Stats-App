@@ -114,6 +114,9 @@ function FixturesContent({
                             <Link to="/live">Live score</Link>
                           </Button>
                         ) : null}
+                        <Button asChild size="sm" variant="ghost">
+                          <Link to={`/matches/${match.id}`}>Match centre</Link>
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>

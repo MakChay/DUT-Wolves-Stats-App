@@ -212,9 +212,10 @@ function TeamDetailContent({ data, team }: { data: PublicData; team: Team }) {
                 const opponentId = match.homeTeamId === team.id ? match.awayTeamId : match.homeTeamId
                 const opponent = data.teamById.get(opponentId)
                 return (
-                  <div
+                  <Link
                     key={match.id}
-                    className="flex items-center justify-between gap-2 rounded-control border border-line/70 px-3 py-2"
+                    to={`/matches/${match.id}`}
+                    className="flex items-center justify-between gap-2 rounded-control border border-line/70 px-3 py-2 transition hover:border-accent/50"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-xs font-medium text-ink">
@@ -231,7 +232,7 @@ function TeamDetailContent({ data, team }: { data: PublicData; team: Team }) {
                     ) : (
                       <Badge tone="neutral">{match.round ?? 'Fixture'}</Badge>
                     )}
-                  </div>
+                  </Link>
                 )
               })
             )}
@@ -255,9 +256,10 @@ function TeamDetailContent({ data, team }: { data: PublicData; team: Team }) {
                 const opponentId = isHome ? match.awayTeamId : match.homeTeamId
                 const opponent = data.teamById.get(opponentId)
                 return (
-                  <div
+                  <Link
                     key={match.id}
-                    className="flex items-center justify-between gap-2 rounded-control border border-line/70 px-3 py-2"
+                    to={`/matches/${match.id}`}
+                    className="flex items-center justify-between gap-2 rounded-control border border-line/70 px-3 py-2 transition hover:border-accent/50"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-xs font-medium text-ink">
@@ -278,7 +280,7 @@ function TeamDetailContent({ data, team }: { data: PublicData; team: Team }) {
                     >
                       {own}–{other}
                     </span>
-                  </div>
+                  </Link>
                 )
               })
             )}

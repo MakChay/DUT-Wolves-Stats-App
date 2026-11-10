@@ -100,7 +100,10 @@ function ResultsContent({
 
                   <div className="flex items-center justify-between gap-2 border-t border-line pt-2 sm:w-44 sm:flex-col sm:items-end sm:border-0 sm:pt-0">
                     <Badge tone="neutral">{competition?.shortName ?? 'Competition'}</Badge>
-                    <span className="text-[11px] text-ink-faint">{match.venue}</span>
+                    <span className="truncate text-[11px] text-ink-faint">{match.venue}</span>
+                    <Button asChild size="sm" variant="ghost">
+                      <Link to={`/matches/${match.id}`}>Match centre</Link>
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
