@@ -259,6 +259,7 @@ export type MatchEventType =
   | 'PERIOD_END'
   | 'MATCH_END'
   | 'TEAM_SCORE'
+  | 'TIMEOUT'
 
 export interface MatchEventData {
   id: string
@@ -679,6 +680,7 @@ export const EVENT_LABELS: Record<MatchEventType, string> = {
   PERIOD_END: 'Period end',
   MATCH_END: 'Match ended',
   TEAM_SCORE: 'Team score recorded',
+  TIMEOUT: 'Timeout',
 }
 
 export const EVENT_SHORT_LABELS: Record<MatchEventType, string> = {
@@ -701,6 +703,7 @@ export const EVENT_SHORT_LABELS: Record<MatchEventType, string> = {
   PERIOD_END: 'END',
   MATCH_END: 'FT',
   TEAM_SCORE: 'PTS',
+  TIMEOUT: 'TMO',
 }
 
 export const SHOOTING_EVENTS: MatchEventType[] = [

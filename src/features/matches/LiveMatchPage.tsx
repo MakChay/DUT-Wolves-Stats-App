@@ -28,7 +28,7 @@ import type {
   Team,
 } from '@/types/domain'
 import { EVENT_LABELS, EVENT_POINTS, isDutTeamId, jerseyLabel } from '@/types/domain'
-import { derivePlayerGameStats, formatClock, matchScore, teamScore } from '@/services/analytics/stats'
+import { derivePlayerGameStats, formatClock, teamScore } from '@/services/analytics/stats'
 import { captureMatchSnapshot } from '@/services/snapshots/capture'
 import {
   dequeueEvent,
@@ -45,6 +45,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonCard } from '@/components/ui/skeleton'
@@ -120,6 +121,12 @@ const actions: ActionDef[] = [
   { type: 'FOUL', label: 'Personal Foul', short: 'PF', tone: 'foul', section: 'Possession' },
 ]
 
+function parseScore(value: string): number | null {
+  if (value.trim() === '') return null
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : null
+}
+
 const TONE_CLASSES: Record<ActionTone, string> = {
   make: 'border-success/30 bg-success/10 text-success hover:bg-success/20 active:bg-success/25',
   miss: 'border-danger/30 bg-danger/[0.08] text-danger hover:bg-danger/15 active:bg-danger/20',
@@ -132,10 +139,12 @@ function ActionButton({
   action,
   disabled,
   onRecord,
+  courtside = false,
 }: {
   action: ActionDef
   disabled: boolean
   onRecord: (type: MatchEventType) => void
+  courtside?: boolean
 }) {
   return (
     <button
@@ -143,12 +152,15 @@ function ActionButton({
       disabled={disabled}
       onClick={() => onRecord(action.type)}
       className={cn(
-        'flex min-h-[62px] flex-col items-center justify-center rounded-control border px-2 py-2 text-center transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-35',
+        'flex flex-col items-center justify-center rounded-control border px-2 py-2 text-center transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-35',
+        courtside ? 'min-h-[84px]' : 'min-h-[62px]',
         TONE_CLASSES[action.tone],
       )}
       aria-label={action.label}
     >
-      <span className="text-[13px] font-bold leading-tight">{action.label}</span>
+      <span className={cn('font-bold leading-tight', courtside ? 'text-sm' : 'text-[13px]')}>
+        {action.label}
+      </span>
       <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider opacity-70">
         {action.short}
       </span>
@@ -257,6 +269,31 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
   const [subOut, setSubOut] = useState('')
   const [subIn, setSubIn] = useState('')
   const [courtside, setCourtside] = useState(false)
+  const [possession, setPossession] = useState<'own' | 'opponent'>(() => {
+    try {
+      return window.localStorage.getItem(`dws.livePossession.${initialMatch.id}`) === 'opponent'
+        ? 'opponent'
+        : 'own'
+    } catch {
+      return 'own'
+    }
+  })
+  const [manualScore, setManualScore] = useState<{ home: string; away: string }>(() => {
+    try {
+      const raw = window.localStorage.getItem(`dws.liveManualScore.${initialMatch.id}`)
+      if (raw) {
+        const parsed = JSON.parse(raw) as { home?: unknown; away?: unknown }
+        return {
+          home: parsed.home === undefined ? '' : String(parsed.home),
+          away: parsed.away === undefined ? '' : String(parsed.away),
+        }
+      }
+    } catch {
+      // Fall through to an empty manual scoreboard.
+    }
+    return { home: '', away: '' }
+  })
+  const [confirmMismatch, setConfirmMismatch] = useState(false)
   const actionTimer = useRef<number | null>(null)
   const pageRef = useRef<HTMLDivElement | null>(null)
 
@@ -286,7 +323,33 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
   const opponentScore = teamScore(events, opponentId, match.id)
   const homeScore = initialMatch.homeTeamId === ownTeamId ? ownScore : opponentScore
   const awayScore = initialMatch.homeTeamId === ownTeamId ? opponentScore : ownScore
-  const score = matchScore(events, initialMatch)
+
+  const periodFouls = (teamId: string) =>
+    events.filter(
+      (event) =>
+        !event.voided &&
+        event.teamId === teamId &&
+        event.period === match.period &&
+        event.type === 'FOUL',
+    ).length
+  const ownTeamFouls = periodFouls(ownTeamId)
+  const opponentTeamFouls = periodFouls(opponentId)
+  const bonusLimit = 5
+  const ownBonus = ownTeamFouls >= bonusLimit
+  const opponentBonus = opponentTeamFouls >= bonusLimit
+
+  const timeoutCount = (teamId: string) =>
+    events.filter((event) => !event.voided && event.teamId === teamId && event.type === 'TIMEOUT')
+      .length
+  const ownTimeouts = timeoutCount(ownTeamId)
+  const opponentTimeouts = timeoutCount(opponentId)
+
+  const manualHomeScore = parseScore(manualScore.home)
+  const manualAwayScore = parseScore(manualScore.away)
+  const scoreMismatch =
+    manualHomeScore !== null &&
+    manualAwayScore !== null &&
+    (manualHomeScore !== homeScore || manualAwayScore !== awayScore)
 
   const selectedPlayer = selectedPlayerId ? playerById.get(selectedPlayerId) ?? null : null
   const selectedStats = selectedPlayer
@@ -575,7 +638,34 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
     flash(incoming ? `${jerseyLabel(incoming.jerseyNumber)} ${incoming.lastName} checked in` : 'Substitution recorded')
   }
 
+  const recordTimeout = (teamId: string, label: string) => {
+    if (completed) return
+    record('TIMEOUT', undefined, teamId, 0)
+    flash(`${label} timeout`)
+  }
+
+  const nextPeriod = () => {
+    if (completed || match.period >= 4) return
+    setClockRunning(false)
+    setPeriod(match.period + 1)
+  }
+
+  const togglePossession = () => {
+    setPossession((current) => (current === 'own' ? 'opponent' : 'own'))
+  }
+
   const endMatch = async () => {
+    if (scoreMismatch && !confirmMismatch) {
+      setConfirmMismatch(true)
+      setEndOpen(true)
+      toast({
+        title: 'Score mismatch',
+        description:
+          'The manual scoreboard does not match the event score. Reconcile it, or press End anyway to finish.',
+        tone: 'error',
+      })
+      return
+    }
     setClockRunning(false)
     setMatch((current) => ({ ...current, status: 'completed', clockSeconds: 0 }))
     setClockSeconds(0)
@@ -662,6 +752,25 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
     },
     [],
   )
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(`dws.livePossession.${initialMatch.id}`, possession)
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [possession, initialMatch.id])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        `dws.liveManualScore.${initialMatch.id}`,
+        JSON.stringify(manualScore),
+      )
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [manualScore, initialMatch.id])
 
   const statusLabel = completed
     ? 'Match completed'
@@ -900,6 +1009,7 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
                         action={action}
                         disabled={!selectedPlayerId || completed}
                         onRecord={handleAction}
+                        courtside={courtside}
                       />
                     ))}
                 </div>
@@ -915,6 +1025,7 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
                         action={action}
                         disabled={!selectedPlayerId || completed}
                         onRecord={handleAction}
+                        courtside={courtside}
                       />
                     ))}
                 </div>
@@ -939,6 +1050,86 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
         </div>
 
         <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Game state</CardTitle>
+                <p className="mt-0.5 text-xs text-ink-muted">
+                  Team fouls reset each period. Bonus starts at {bonusLimit}.
+                </p>
+              </div>
+              <Badge tone={ownBonus || opponentBonus ? 'warning' : 'neutral'}>
+                {possession === 'own' ? `${ownTeam.shortName} ball` : `${opponent.shortName} ball`}
+              </Badge>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-2">
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { team: ownTeam, fouls: ownTeamFouls, bonus: ownBonus },
+                  { team: opponent, fouls: opponentTeamFouls, bonus: opponentBonus },
+                ].map((row) => (
+                  <div
+                    key={row.team.id}
+                    className="rounded-control border border-line bg-canvas/40 p-2.5 text-center"
+                  >
+                    <p className="truncate text-[10px] uppercase tracking-wider text-ink-faint">
+                      {row.team.shortName}
+                    </p>
+                    <p className="stat-num mt-0.5 text-2xl text-ink">{row.fouls}</p>
+                    <p className="text-[10px] text-ink-faint">team fouls · Q{match.period}</p>
+                    {row.bonus ? (
+                      <Badge tone="danger" className="mt-1">BONUS</Badge>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between gap-2 rounded-control border border-line bg-canvas/40 px-3 py-2">
+                <div className="min-w-0">
+                  <p className="label-caps">Possession</p>
+                  <p className="truncate text-sm font-semibold text-ink">
+                    {possession === 'own' ? ownTeam.name : opponent.name}
+                  </p>
+                </div>
+                <Button variant="secondary" size="sm" onClick={togglePossession} disabled={completed}>
+                  Switch
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => recordTimeout(ownTeamId, ownTeam.shortName)}
+                  disabled={completed}
+                >
+                  <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                  {ownTeam.shortName} · {ownTimeouts}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => recordTimeout(opponentId, opponent.shortName)}
+                  disabled={completed}
+                >
+                  <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                  {opponent.shortName} · {opponentTimeouts}
+                </Button>
+              </div>
+              <p className="text-center text-[10px] text-ink-faint">timeouts used</p>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full"
+                onClick={nextPeriod}
+                disabled={completed || match.period >= 4}
+              >
+                Start Q{match.period + 1}
+              </Button>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader className="items-center">
               <CardTitle>Clock & periods</CardTitle>
@@ -1037,18 +1228,85 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
           <Card>
             <CardHeader>
               <CardTitle>Score check</CardTitle>
+              <Badge tone={scoreMismatch ? 'danger' : manualHomeScore !== null && manualAwayScore !== null ? 'success' : 'neutral'}>
+                {scoreMismatch
+                  ? 'Mismatch'
+                  : manualHomeScore !== null && manualAwayScore !== null
+                    ? 'Reconciled'
+                    : 'Not checked'}
+              </Badge>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3 pt-2">
-              <div className="rounded-control border border-line bg-canvas/40 p-3 text-center">
-                <p className="truncate text-[11px] text-ink-faint">{ownTeam.shortName}</p>
-                <p className="stat-num mt-1 text-2xl text-ink">{ownScore}</p>
+            <CardContent className="space-y-3 pt-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-control border border-line bg-canvas/40 p-3 text-center">
+                  <p className="truncate text-[11px] text-ink-faint">{homeTeam.shortName} · events</p>
+                  <p className="stat-num mt-1 text-2xl text-ink">{homeScore}</p>
+                </div>
+                <div className="rounded-control border border-line bg-canvas/40 p-3 text-center">
+                  <p className="truncate text-[11px] text-ink-faint">{awayTeam.shortName} · events</p>
+                  <p className="stat-num mt-1 text-2xl text-ink">{awayScore}</p>
+                </div>
               </div>
-              <div className="rounded-control border border-line bg-canvas/40 p-3 text-center">
-                <p className="truncate text-[11px] text-ink-faint">{opponent.shortName}</p>
-                <p className="stat-num mt-1 text-2xl text-ink">{opponentScore}</p>
+
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+                  Manual {homeTeam.shortName}
+                  <Input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={manualScore.home}
+                    onChange={(event) => setManualScore({ ...manualScore, home: event.target.value })}
+                    placeholder={String(homeScore)}
+                    className="mt-1"
+                    disabled={completed}
+                  />
+                </label>
+                <label className="block text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+                  Manual {awayTeam.shortName}
+                  <Input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={manualScore.away}
+                    onChange={(event) => setManualScore({ ...manualScore, away: event.target.value })}
+                    placeholder={String(awayScore)}
+                    className="mt-1"
+                    disabled={completed}
+                  />
+                </label>
               </div>
-              <p className="col-span-2 text-center text-[11px] text-ink-faint">
-                {score.home !== homeScore || score.away !== awayScore ? 'Recalculating…' : 'Derived live from events'}
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setManualScore({ home: String(homeScore), away: String(awayScore) })}
+                  disabled={completed}
+                >
+                  Use event score
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setManualScore({ home: '', away: '' })}
+                  disabled={completed}
+                >
+                  Clear check
+                </Button>
+              </div>
+
+              <p
+                className={cn(
+                  'text-center text-[11px]',
+                  scoreMismatch ? 'text-danger' : 'text-ink-faint',
+                )}
+              >
+                {manualHomeScore === null || manualAwayScore === null
+                  ? 'Enter the physical scoreboard to reconcile before finishing.'
+                  : scoreMismatch
+                    ? `Mismatch: scoreboard ${manualHomeScore}–${manualAwayScore}, events ${homeScore}–${awayScore}.`
+                    : 'Scoreboard matches the event-derived score.'}
               </p>
             </CardContent>
           </Card>
@@ -1103,7 +1361,13 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
         </DialogContent>
       </Dialog>
 
-      <Dialog open={endOpen} onOpenChange={setEndOpen}>
+      <Dialog
+        open={endOpen}
+        onOpenChange={(open) => {
+          setEndOpen(open)
+          if (!open) setConfirmMismatch(false)
+        }}
+      >
         <DialogContent
           title="End this match?"
           description="The clock stops and the match is marked completed. Events stay in history and can still be reviewed."
@@ -1113,15 +1377,34 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
                 Keep playing
               </Button>
               <Button variant="danger" onClick={() => void endMatch()}>
-                End match
+                {confirmMismatch ? 'End anyway' : 'End match'}
               </Button>
             </>
           }
         >
           <p className="text-sm text-ink-muted">
-            Final score: <span className="font-semibold text-ink">{homeTeam.shortName} {homeScore}</span> —{' '}
+            Event score: <span className="font-semibold text-ink">{homeTeam.shortName} {homeScore}</span> —{' '}
             <span className="font-semibold text-ink">{awayTeam.shortName} {awayScore}</span>
           </p>
+          {manualHomeScore !== null && manualAwayScore !== null ? (
+            <p
+              className={cn(
+                'mt-2 rounded-control border px-3 py-2 text-[11px] leading-relaxed',
+                scoreMismatch
+                  ? 'border-danger/30 bg-danger/[0.07] text-danger'
+                  : 'border-success/30 bg-success/[0.07] text-success',
+              )}
+            >
+              Manual scoreboard: {manualHomeScore}–{manualAwayScore}.{' '}
+              {scoreMismatch
+                ? 'This differs from the event score. Reconcile before finishing, or press End anyway.'
+                : 'Reconciled with the event score.'}
+            </p>
+          ) : (
+            <p className="mt-2 text-[11px] text-ink-faint">
+              No manual score check entered. You can add one in the Score check card before ending.
+            </p>
+          )}
           <p className="mt-3 rounded-control border border-warning/30 bg-warning/[0.07] px-3 py-2 text-[11px] leading-relaxed text-warning">
             The mandatory post-match team report opens next. The match is not administratively
             complete until that report is submitted.
