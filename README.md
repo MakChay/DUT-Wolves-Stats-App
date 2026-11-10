@@ -27,7 +27,7 @@ The platform helps the team manage:
 - Wolf-branded startup and workspace loading screens
 - Public match scores and status stream live from Firestore
 
-The PWA does **not** cache Firebase records or support offline scoring. Real match operations require a network connection.
+Courtside event capture is queued locally and retried when the connection returns, so a dropped signal does not lose a scorekeeper action. Opening matches, reports and administrative actions still require a network connection; the PWA does not cache Firebase records for full offline use.
 
 ## Tech stack
 

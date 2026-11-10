@@ -234,7 +234,7 @@ Typical deployment pattern:
 
 The PWA manifest describes the app name, standalone display mode, theme, and install icons. Production builds register a small service worker that caches the static app shell, hashed JS/CSS/font/image resources, the supplied public team images, and an offline fallback page.
 
-The service worker does not cache API responses, Firestore data, authentication state, match events, or private player/report records. Offline mode therefore only provides the static shell and an explanation; it does not support offline scoring or data synchronization.
+The service worker does not cache API responses, Firestore data, authentication state, or private player/report records. Courtside events are persisted to a per-match local queue before the network write and retried when connectivity returns; the queue is idempotent by `clientEventId`. Opening a match, loading rosters, submitting reports and all administrative actions still require a network connection.
 
 ## 17. Scalability and maintenance
 

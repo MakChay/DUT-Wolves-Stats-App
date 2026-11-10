@@ -119,7 +119,7 @@ The app makes the data source visible to the user: whether the app is using live
 For invited users, the app handles account activation cleanly through a focused prompt rather than allowing access before setup is complete.
 
 ### 6.5 Installable web app
-The public app shell can be installed where the browser supports PWA installation. The service worker caches static application resources and an offline fallback only; live data, authentication, and private player or injury records are not cached, and offline score entry is not supported.
+The public app shell can be installed where the browser supports PWA installation. The service worker caches static application resources and an offline fallback only; live data, authentication, and private player or injury records are not cached. Courtside events are queued in local storage and retried when the connection returns, but the app still needs a connection to open a match or submit reports.
 
 ### 6.6 Loading experience
 Show a lightweight, branded first-paint screen while the application bundle starts, then dismiss it as soon as React mounts. Use the supplied wolf mark as a subdued watermark behind the mark and status indicator. Authenticated routes reuse the same visual language while Firebase resolves the user's session. Respect reduced-motion preferences and keep the loading state informational rather than implying offline support.

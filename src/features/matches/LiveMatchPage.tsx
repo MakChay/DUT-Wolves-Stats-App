@@ -28,6 +28,12 @@ import type {
 import { EVENT_LABELS, EVENT_POINTS, isDutTeamId, jerseyLabel } from '@/types/domain'
 import { derivePlayerGameStats, formatClock, matchScore, teamScore } from '@/services/analytics/stats'
 import { captureMatchSnapshot } from '@/services/snapshots/capture'
+import {
+  dequeueEvent,
+  enqueueEvent,
+  isEventQueued,
+  readQueuedEvents,
+} from '@/services/live/queue'
 import { repositories } from '@/services/repositories'
 import { useAsync } from '@/hooks/useAsync'
 import { useTeamScope } from '@/features/teams/TeamScopeContext'
@@ -223,7 +229,14 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
   )
 
   const [match, setMatch] = useState<Match>(initialMatch)
-  const [events, setEvents] = useState<MatchEvent[]>(initialEvents)
+  const [events, setEvents] = useState<MatchEvent[]>(() => {
+    const queued = readQueuedEvents(initialMatch.id)
+    const storedIds = new Set(initialEvents.map((event) => event.id))
+    return [...initialEvents, ...queued.filter((event) => !storedIds.has(event.id))].sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt),
+    )
+  })
+  const [pendingCount, setPendingCount] = useState(() => readQueuedEvents(initialMatch.id).length)
   const [clockSeconds, setClockSeconds] = useState(initialMatch.clockSeconds)
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
   const [onCourt, setOnCourt] = useState<Set<string>>(
@@ -244,17 +257,6 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
   const actionTimer = useRef<number | null>(null)
 
   const completed = match.status === 'completed'
-
-  useEffect(() => {
-    const onOnline = () => setIsOnline(true)
-    const onOffline = () => setIsOnline(false)
-    window.addEventListener('online', onOnline)
-    window.addEventListener('offline', onOffline)
-    return () => {
-      window.removeEventListener('online', onOnline)
-      window.removeEventListener('offline', onOffline)
-    }
-  }, [])
 
   useEffect(() => {
     if (!clockRunning || completed) return
@@ -316,6 +318,41 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
     actionTimer.current = window.setTimeout(() => setLastAction(null), 3500)
   }
 
+  const flushQueue = useCallback(async () => {
+    if (!navigator.onLine) return
+    const queued = readQueuedEvents(match.id)
+    if (queued.length === 0) {
+      setPendingCount(0)
+      return
+    }
+    setSyncing(true)
+    for (const queuedEvent of queued) {
+      try {
+        await repositories.events.record(queuedEvent)
+        dequeueEvent(match.id, queuedEvent.id)
+        setPendingCount(readQueuedEvents(match.id).length)
+      } catch {
+        break
+      }
+    }
+    setSyncing(false)
+  }, [match.id])
+
+  useEffect(() => {
+    const onOnline = () => {
+      setIsOnline(true)
+      void flushQueue()
+    }
+    const onOffline = () => setIsOnline(false)
+    window.addEventListener('online', onOnline)
+    window.addEventListener('offline', onOffline)
+    if (navigator.onLine) void flushQueue()
+    return () => {
+      window.removeEventListener('online', onOnline)
+      window.removeEventListener('offline', onOffline)
+    }
+  }, [flushQueue])
+
   const persistClock = useCallback(
     (status: Match['status'], clock: number, period: number) => {
       void repositories.matches.update(match.id, {
@@ -350,7 +387,8 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
         points,
       }
       setEvents((current) => [event, ...current])
-      setSyncing(true)
+      enqueueEvent(match.id, event)
+      setPendingCount(readQueuedEvents(match.id).length)
       const playerLabel = player
         ? [jerseyLabel(player.jerseyNumber), player.firstName, player.lastName].filter(Boolean).join(' ')
         : ''
@@ -361,18 +399,31 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
             ? `${playerLabel} — ${EVENT_LABELS[type]}`
             : EVENT_LABELS[type]
       flash(eventLabel)
+      if (!isOnline) {
+        toast({
+          title: 'Saved on this device',
+          description: 'The event will sync automatically when the connection returns.',
+          tone: 'info',
+        })
+        return
+      }
+      setSyncing(true)
       repositories.events
         .record(event)
+        .then(() => {
+          dequeueEvent(match.id, event.id)
+          setPendingCount(readQueuedEvents(match.id).length)
+        })
         .catch(() => {
           toast({
-            title: 'Event kept locally',
-            description: 'The event could not be saved. It stays in this device’s history until the connection returns.',
+            title: 'Saved on this device',
+            description: 'The server could not be reached. The event stays queued and will retry automatically.',
             tone: 'error',
           })
         })
         .finally(() => setSyncing(false))
     },
-    [completed, playerById, match.id, match.period, clockSeconds, ownTeamId, opponent.shortName, user?.id, toast],
+    [completed, playerById, match.id, match.period, clockSeconds, ownTeamId, opponent.shortName, user?.id, toast, isOnline],
   )
 
   const handleAction = (type: MatchEventType) => {
@@ -388,6 +439,17 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
   }
 
   const voidEvent = async (event: MatchEvent, reason = 'Corrected by manager') => {
+    if (isEventQueued(match.id, event.id)) {
+      dequeueEvent(match.id, event.id)
+      setEvents((current) => current.filter((entry) => entry.id !== event.id))
+      setPendingCount(readQueuedEvents(match.id).length)
+      toast({
+        title: 'Queued event removed',
+        description: 'It had not reached the server yet, so no correction record was needed.',
+        tone: 'success',
+      })
+      return
+    }
     setEvents((current) =>
       current.map((entry) =>
         entry.id === event.id
@@ -536,11 +598,13 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
 
   const statusLabel = completed
     ? 'Match completed'
-    : !isOnline
-      ? 'Offline · queued'
-      : syncing
-        ? 'Syncing…'
-        : 'Synced'
+    : pendingCount > 0
+      ? `${pendingCount} queued${isOnline ? ' · retrying' : ' · offline'}`
+      : !isOnline
+        ? 'Offline'
+        : syncing
+          ? 'Syncing…'
+          : 'Synced'
 
   return (
     <div className="space-y-4 pb-24 lg:pb-6">
@@ -552,10 +616,15 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
           </Link>
         </Button>
         <div className="flex items-center gap-2">
-          <Badge tone={!isOnline ? 'warning' : syncing ? 'accent' : 'success'}>
+          <Badge tone={!isOnline || pendingCount > 0 ? 'warning' : syncing ? 'accent' : 'success'}>
             {!isOnline ? <WifiOff className="h-3 w-3" aria-hidden="true" /> : <CheckCircle2 className="h-3 w-3" aria-hidden="true" />}
             {statusLabel}
           </Badge>
+          {pendingCount > 0 && isOnline ? (
+            <Button variant="secondary" size="sm" onClick={() => void flushQueue()} disabled={syncing}>
+              Sync now
+            </Button>
+          ) : null}
           <Badge tone="neutral">{formatDate(initialMatch.tipoff)}</Badge>
         </div>
       </div>
