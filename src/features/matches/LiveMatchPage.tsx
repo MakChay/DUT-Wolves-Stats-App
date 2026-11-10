@@ -253,9 +253,25 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
   const [pendingCount, setPendingCount] = useState(() => readQueuedEvents(initialMatch.id).length)
   const [clockSeconds, setClockSeconds] = useState(initialMatch.clockSeconds)
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
-  const [onCourt, setOnCourt] = useState<Set<string>>(
-    () => new Set(ownRoster.filter((entry) => entry.isStarter).map((entry) => entry.playerId)),
-  )
+  const [onCourt, setOnCourt] = useState<Set<string>>(() => {
+    const next = new Set(
+      ownRoster.filter((entry) => entry.isStarter).map((entry) => entry.playerId),
+    )
+    const substitutions = [...initialEvents, ...readQueuedEvents(initialMatch.id)]
+      .filter(
+        (event) =>
+          !event.voided &&
+          event.teamId === ownTeamId &&
+          (event.type === 'SUB_IN' || event.type === 'SUB_OUT'),
+      )
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    for (const event of substitutions) {
+      if (!event.playerId) continue
+      if (event.type === 'SUB_OUT') next.delete(event.playerId)
+      else next.add(event.playerId)
+    }
+    return next
+  })
   const [clockRunning, setClockRunning] = useState(initialMatch.status === 'live')
   const [isOnline, setIsOnline] = useState(() => navigator.onLine)
   const [syncing, setSyncing] = useState(false)
@@ -294,6 +310,32 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
     return { home: '', away: '' }
   })
   const [confirmMismatch, setConfirmMismatch] = useState(false)
+  const [minutesByPlayer, setMinutesByPlayer] = useState<Record<string, number>>(() => {
+    try {
+      const raw = window.localStorage.getItem(`dws.liveMinutes.${initialMatch.id}`)
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, unknown>
+        if (parsed && typeof parsed === 'object') {
+          return Object.fromEntries(
+            Object.entries(parsed).map(([playerId, value]) => [
+              playerId,
+              typeof value === 'number' && value >= 0 ? value : 0,
+            ]),
+          )
+        }
+      }
+    } catch {
+      // Start from zero when storage is unavailable.
+    }
+    return {}
+  })
+  const [autoAdvance, setAutoAdvance] = useState(() => {
+    try {
+      return window.localStorage.getItem(`dws.liveAutoAdvance.${initialMatch.id}`) !== 'off'
+    } catch {
+      return true
+    }
+  })
   const actionTimer = useRef<number | null>(null)
   const pageRef = useRef<HTMLDivElement | null>(null)
 
@@ -302,6 +344,11 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
   useEffect(() => {
     if (!clockRunning || completed) return
     const interval = window.setInterval(() => {
+      setMinutesByPlayer((current) => {
+        const next = { ...current }
+        for (const playerId of onCourt) next[playerId] = (next[playerId] ?? 0) + 1
+        return next
+      })
       setClockSeconds((current) => {
         if (current <= 1) {
           setClockRunning(false)
@@ -311,7 +358,7 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
       })
     }, 1000)
     return () => window.clearInterval(interval)
-  }, [clockRunning, completed])
+  }, [clockRunning, completed, onCourt])
 
   useEffect(() => {
     return () => {
@@ -620,6 +667,21 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
     persistClock(match.status === 'live' ? 'live' : 'paused', nextClock, period)
   }
 
+  useEffect(() => {
+    if (!autoAdvance || completed || clockSeconds !== 0 || match.period >= 4) return
+    if (match.status !== 'live' && match.status !== 'paused') return
+    const timeout = window.setTimeout(() => {
+      setClockRunning(false)
+      setPeriod(match.period + 1)
+      toast({
+        title: `Q${match.period + 1} ready`,
+        description: 'The clock was reset to 10:00. Start it when the period begins.',
+        tone: 'info',
+      })
+    }, 1200)
+    return () => window.clearTimeout(timeout)
+  }, [autoAdvance, completed, clockSeconds, match.period, match.status])
+
   const confirmSubstitution = () => {
     if (!subOut || !subIn) return
     record('SUB_OUT', subOut)
@@ -771,6 +833,28 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
       // Ignore storage failures.
     }
   }, [manualScore, initialMatch.id])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        `dws.liveMinutes.${initialMatch.id}`,
+        JSON.stringify(minutesByPlayer),
+      )
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [minutesByPlayer, initialMatch.id])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        `dws.liveAutoAdvance.${initialMatch.id}`,
+        autoAdvance ? 'on' : 'off',
+      )
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [autoAdvance, initialMatch.id])
 
   const statusLabel = completed
     ? 'Match completed'
@@ -937,6 +1021,9 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
                         {player.position}
                         {stats.pf > 0 ? <span className={stats.pf >= 4 ? 'text-warning' : ''}>{stats.pf} PF</span> : null}
                       </span>
+                      <span className="text-[9px] tabular-nums text-ink-faint">
+                        {formatClock(minutesByPlayer[player.id] ?? 0)} min
+                      </span>
                       {fouledOut ? <span className="text-[9px] font-bold text-danger">FOULED OUT</span> : null}
                     </button>
                   )
@@ -956,7 +1043,9 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
                         <PlayerAvatar player={player} size="sm" />
                         <div className="min-w-0">
                           <p className="truncate text-[11px] font-medium text-ink">{player.lastName}</p>
-                          <p className="text-[9px] uppercase text-ink-faint">{player.position}</p>
+                          <p className="text-[9px] uppercase text-ink-faint">
+                            {player.position} · {formatClock(minutesByPlayer[player.id] ?? 0)}
+                          </p>
                         </div>
                       </div>
                     ))}
@@ -1197,9 +1286,22 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
                   ))}
                 </div>
               </div>
+              <label className="flex cursor-pointer items-center gap-2 text-[11px] text-ink-muted">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-[rgb(var(--color-accent))]"
+                  checked={autoAdvance}
+                  disabled={completed}
+                  onChange={(event) => setAutoAdvance(event.target.checked)}
+                />
+                Auto-advance to the next period at 00:00
+              </label>
               {clockSeconds === 0 && !completed ? (
                 <p className="text-[11px] leading-relaxed text-warning">
-                  Clock reached 00:00. Move to the next period or adjust the clock.
+                  Clock reached 00:00.{' '}
+                  {autoAdvance && match.period < 4
+                    ? 'Advancing to the next period…'
+                    : 'Move to the next period or adjust the clock.'}
                 </p>
               ) : null}
             </CardContent>
@@ -1337,7 +1439,7 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
                 onValueChange={setSubOut}
                 options={onCourtPlayers.map(({ player }) => ({
                   value: player.id,
-                  label: `${jerseyLabel(player.jerseyNumber)} ${player.firstName} ${player.lastName}`,
+                  label: `${jerseyLabel(player.jerseyNumber)} ${player.firstName} ${player.lastName} · ${formatClock(minutesByPlayer[player.id] ?? 0)}`,
                 }))}
                 placeholder="Select on-court player"
                 className="w-full"
@@ -1351,7 +1453,7 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
                 onValueChange={setSubIn}
                 options={benchPlayers.map(({ player }) => ({
                   value: player.id,
-                  label: `${jerseyLabel(player.jerseyNumber)} ${player.firstName} ${player.lastName}`,
+                  label: `${jerseyLabel(player.jerseyNumber)} ${player.firstName} ${player.lastName} · ${formatClock(minutesByPlayer[player.id] ?? 0)}`,
                 }))}
                 placeholder="Select bench player"
                 className="w-full"
