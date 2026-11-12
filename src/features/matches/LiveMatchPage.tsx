@@ -794,13 +794,6 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
   }
 
   useEffect(() => {
-    document.body.style.overflow = courtside ? 'hidden' : ''
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [courtside])
-
-  useEffect(() => {
     const onFullscreenChange = () => {
       if (!document.fullscreenElement) setFocusMode(false)
     }

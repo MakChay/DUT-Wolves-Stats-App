@@ -150,27 +150,20 @@ export function AppShell({ area }: { area: RoleArea }) {
     )
   }
 
-  if (focusMode) {
-    return (
-      <div className="min-h-dvh bg-canvas">
-        <main className="mx-auto w-full max-w-[1600px] px-3 py-4 sm:px-4 lg:px-6">
-          <Outlet />
-        </main>
-      </div>
-    )
-  }
-
   return (
     <div className="flex min-h-dvh bg-canvas">
-      <aside className="relative sticky top-0 hidden h-dvh w-[264px] shrink-0 border-r border-line bg-sidebar lg:block">
-        <WolfWatermark opacity={0.05} />
-        <div className="relative z-10 h-full">
-          <SidebarBody area={area} />
-        </div>
-      </aside>
+      {!focusMode ? (
+        <aside className="relative sticky top-0 hidden h-dvh w-[264px] shrink-0 border-r border-line bg-sidebar lg:block">
+          <WolfWatermark opacity={0.05} />
+          <div className="relative z-10 h-full">
+            <SidebarBody area={area} />
+          </div>
+        </aside>
+      ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-line bg-canvas/95 px-4 backdrop-blur lg:px-8">
+        {!focusMode ? (
+          <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-line bg-canvas/95 px-4 backdrop-blur lg:px-8">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
@@ -255,9 +248,15 @@ export function AppShell({ area }: { area: RoleArea }) {
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
           </DropdownMenu.Root>
-        </header>
+          </header>
+        ) : null}
 
-        <main className="relative isolate mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 lg:px-8">
+        <main
+          className={cn(
+            'relative isolate mx-auto w-full flex-1 px-4 py-6 lg:px-8',
+            focusMode ? 'max-w-[1600px] px-3 py-4 sm:px-4 lg:px-6' : 'max-w-[1400px]',
+          )}
+        >
           <WolfWatermark opacity={0.035} />
           <div className="relative z-10">
             <Outlet />
