@@ -777,19 +777,24 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
 
   const toggleCourtside = async () => {
     const next = !courtside
-    setFocusMode(next)
     if (next) {
       try {
-        await document.documentElement.requestFullscreen()
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen()
+        }
       } catch {
-        // The app shell still hides its chrome when the Fullscreen API is unavailable.
+        // Focus mode still hides the sidebar when the Fullscreen API is unavailable.
       }
-    } else if (document.fullscreenElement) {
-      try {
-        await document.exitFullscreen()
-      } catch {
-        // Ignore a rejected exit; the overlay is already closing.
+      setFocusMode(true)
+    } else {
+      if (document.fullscreenElement) {
+        try {
+          await document.exitFullscreen()
+        } catch {
+          // Ignore a rejected exit; focus mode still closes.
+        }
       }
+      setFocusMode(false)
     }
   }
 
@@ -865,7 +870,7 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
       <div
         className={cn(
           'flex flex-wrap items-center justify-between gap-2',
-          courtside && 'sticky top-0 z-10 border-b border-line bg-canvas/95 py-2 backdrop-blur',
+          courtside && 'sticky top-16 z-10 border-b border-line bg-canvas/95 py-2 backdrop-blur',
         )}
       >
         <Button asChild variant="ghost" size="sm" className="-ml-2">

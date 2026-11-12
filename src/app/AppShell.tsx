@@ -1,6 +1,17 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { ChevronDown, ExternalLink, KeyRound, LogOut, Menu, Moon, Sun, X } from 'lucide-react'
+import {
+  ChevronDown,
+  ExternalLink,
+  KeyRound,
+  LogOut,
+  Menu,
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Sun,
+  X,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import type { RoleArea } from '@/app/navigation'
@@ -115,7 +126,7 @@ export function AppShell({ area }: { area: RoleArea }) {
   const { user, signOut } = useAuth()
   const { theme, toggle } = useTheme()
   const { team } = useTeamScope()
-  const { focusMode } = useFocusMode()
+  const { focusMode, setFocusMode } = useFocusMode()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [passwordOpen, setPasswordOpen] = useState(false)
   const location = useLocation()
@@ -152,18 +163,20 @@ export function AppShell({ area }: { area: RoleArea }) {
 
   return (
     <div className="flex min-h-dvh bg-canvas">
-      {!focusMode ? (
-        <aside className="relative sticky top-0 hidden h-dvh w-[264px] shrink-0 border-r border-line bg-sidebar lg:block">
-          <WolfWatermark opacity={0.05} />
-          <div className="relative z-10 h-full">
-            <SidebarBody area={area} />
-          </div>
-        </aside>
-      ) : null}
+      <aside
+        className={cn(
+          'relative sticky top-0 hidden h-dvh w-[264px] shrink-0 border-r border-line bg-sidebar lg:block',
+          focusMode && 'lg:hidden',
+        )}
+      >
+        <WolfWatermark opacity={0.05} />
+        <div className="relative z-10 h-full">
+          <SidebarBody area={area} />
+        </div>
+      </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {!focusMode ? (
-          <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-line bg-canvas/95 px-4 backdrop-blur lg:px-8">
+        <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-line bg-canvas/95 px-4 backdrop-blur lg:px-8">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
@@ -171,6 +184,16 @@ export function AppShell({ area }: { area: RoleArea }) {
             aria-label="Open navigation"
           >
             <Menu className="h-5 w-5" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFocusMode(!focusMode)}
+            className="hidden rounded-control border border-line p-2 text-ink-muted transition hover:text-ink lg:inline-flex"
+            aria-label={focusMode ? 'Show sidebar' : 'Hide sidebar'}
+            title={focusMode ? 'Show sidebar' : 'Hide sidebar'}
+          >
+            {focusMode ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </button>
 
           <div className="min-w-0 flex-1">
@@ -248,8 +271,7 @@ export function AppShell({ area }: { area: RoleArea }) {
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
           </DropdownMenu.Root>
-          </header>
-        ) : null}
+        </header>
 
         <main
           className={cn(
