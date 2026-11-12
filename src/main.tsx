@@ -10,6 +10,7 @@ import { ErrorBoundary } from '@/components/error-boundary'
 import { AuthProvider } from '@/features/auth/AuthContext'
 import { TeamScopeProvider } from '@/features/teams/TeamScopeContext'
 import { ThemeProvider } from '@/features/theme/ThemeContext'
+import { FocusModeProvider } from '@/app/FocusModeContext'
 import { initAnalytics } from '@/services/firebase/app'
 
 void initAnalytics()
@@ -30,16 +31,18 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <TeamScopeProvider>
-          <ThemeProvider>
-            <ToastProvider>
-              <ErrorBoundary>
-                <App />
-              </ErrorBoundary>
-              <Analytics />
-            </ToastProvider>
-          </ThemeProvider>
-        </TeamScopeProvider>
+        <FocusModeProvider>
+          <TeamScopeProvider>
+            <ThemeProvider>
+              <ToastProvider>
+                <ErrorBoundary>
+                  <App />
+                </ErrorBoundary>
+                <Analytics />
+              </ToastProvider>
+            </ThemeProvider>
+          </TeamScopeProvider>
+        </FocusModeProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,

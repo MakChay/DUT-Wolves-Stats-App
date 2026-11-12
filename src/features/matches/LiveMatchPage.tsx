@@ -40,6 +40,7 @@ import { repositories } from '@/services/repositories'
 import { useAsync } from '@/hooks/useAsync'
 import { useTeamScope } from '@/features/teams/TeamScopeContext'
 import { useAuth } from '@/features/auth/AuthContext'
+import { useFocusMode } from '@/app/FocusModeContext'
 import { useToast } from '@/components/ui/toast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -50,7 +51,6 @@ import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonCard } from '@/components/ui/skeleton'
 import { Scoreboard } from '@/components/stats/scoreboard'
-import { PlayerAvatar } from '@/components/stats/player-avatar'
 import { buildPlayerMap, EventTimeline } from '@/components/stats/event-timeline'
 import { PostMatchReportDialog } from '@/features/reports/PostMatchReportDialog'
 import { reportForTeam } from '@/features/reports/reporting'
@@ -284,7 +284,7 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
   )
   const [subOut, setSubOut] = useState('')
   const [subIn, setSubIn] = useState('')
-  const [courtside, setCourtside] = useState(false)
+  const { focusMode: courtside, setFocusMode } = useFocusMode()
   const [possession, setPossession] = useState<'own' | 'opponent'>(() => {
     try {
       return window.localStorage.getItem(`dws.livePossession.${initialMatch.id}`) === 'opponent'
@@ -777,12 +777,12 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
 
   const toggleCourtside = async () => {
     const next = !courtside
-    setCourtside(next)
+    setFocusMode(next)
     if (next) {
       try {
         await document.documentElement.requestFullscreen()
       } catch {
-        // The fixed courtside overlay still works when the Fullscreen API is unavailable.
+        // The app shell still hides its chrome when the Fullscreen API is unavailable.
       }
     } else if (document.fullscreenElement) {
       try {
@@ -802,17 +802,18 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
 
   useEffect(() => {
     const onFullscreenChange = () => {
-      if (!document.fullscreenElement) setCourtside(false)
+      if (!document.fullscreenElement) setFocusMode(false)
     }
     document.addEventListener('fullscreenchange', onFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
-  }, [])
+  }, [setFocusMode])
 
   useEffect(
     () => () => {
       if (document.fullscreenElement) void document.exitFullscreen()
+      setFocusMode(false)
     },
-    [],
+    [setFocusMode],
   )
 
   useEffect(() => {
@@ -867,18 +868,11 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
           : 'Synced'
 
   return (
-    <div
-      ref={pageRef}
-      className={cn(
-        'space-y-4 pb-24 lg:pb-6',
-        courtside && 'fixed inset-0 z-[60] overflow-y-auto bg-canvas p-3 pb-24 sm:p-4 lg:p-6',
-      )}
-    >
+    <div ref={pageRef} className="space-y-4 pb-24 lg:pb-6">
       <div
         className={cn(
           'flex flex-wrap items-center justify-between gap-2',
-          courtside &&
-            'sticky top-0 z-10 -mx-3 border-b border-line bg-canvas/95 px-3 py-2 backdrop-blur sm:-mx-4 sm:px-4',
+          courtside && 'sticky top-0 z-10 border-b border-line bg-canvas/95 py-2 backdrop-blur',
         )}
       >
         <Button asChild variant="ghost" size="sm" className="-ml-2">
@@ -1012,8 +1006,16 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
                           : 'border-line bg-canvas/40 hover:border-white/20',
                       )}
                       aria-pressed={selectedPlayerId === player.id}
+                      aria-label={`${jerseyLabel(player.jerseyNumber)} ${player.firstName} ${player.lastName}`}
                     >
-                      <PlayerAvatar player={player} selected={selectedPlayerId === player.id} />
+                      <span
+                        className={cn(
+                          'stat-num text-3xl font-black leading-none',
+                          selectedPlayerId === player.id ? 'text-accent' : 'text-ink',
+                        )}
+                      >
+                        {player.jerseyNumber ?? '—'}
+                      </span>
                       <span className="w-full truncate text-center text-[11px] font-semibold text-ink">
                         {player.lastName}
                       </span>
@@ -1040,7 +1042,9 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
                         key={player.id}
                         className="flex items-center gap-2 rounded-control border border-line/70 bg-canvas/30 px-2 py-1.5 opacity-70"
                       >
-                        <PlayerAvatar player={player} size="sm" />
+                        <span className="stat-num w-8 shrink-0 text-center text-lg font-black leading-none text-ink">
+                          {player.jerseyNumber ?? '—'}
+                        </span>
                         <div className="min-w-0">
                           <p className="truncate text-[11px] font-medium text-ink">{player.lastName}</p>
                           <p className="text-[9px] uppercase text-ink-faint">
@@ -1054,9 +1058,12 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
               ) : null}
 
               {selectedPlayer && selectedStats ? (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-control border border-accent/20 bg-accent/[0.05] px-3 py-2">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-control border border-accent/20 bg-accent/[0.05] px-3 py-2">
+                  <span className="stat-num text-xl font-black leading-none text-accent">
+                    {jerseyLabel(selectedPlayer.jerseyNumber)}
+                  </span>
                   <span className="text-xs font-semibold text-ink">
-                    {jerseyLabel(selectedPlayer.jerseyNumber)} {selectedPlayer.firstName} {selectedPlayer.lastName}
+                    {selectedPlayer.firstName} {selectedPlayer.lastName}
                   </span>
                   <span className="text-[11px] text-ink-muted">
                     {selectedStats.points} PTS · {selectedStats.reb} REB · {selectedStats.ast} AST · {selectedStats.pf} PF
@@ -1121,14 +1128,6 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
               </div>
 
               <div className="flex flex-wrap gap-2 border-t border-line pt-3">
-                <Button variant="secondary" size="md" onClick={undoLast} disabled={completed}>
-                  <RotateCcw className="h-4 w-4" aria-hidden="true" />
-                  Undo last
-                </Button>
-                <Button variant="secondary" size="md" onClick={() => setSubOpen(true)} disabled={completed}>
-                  <UserRoundPlus className="h-4 w-4" aria-hidden="true" />
-                  Substitution
-                </Button>
                 <Button variant="danger" size="md" className="ml-auto" onClick={() => setEndOpen(true)} disabled={completed}>
                   <Square className="h-3.5 w-3.5" aria-hidden="true" />
                   End match
@@ -1308,37 +1307,38 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
           </Card>
 
           <Card>
-            <CardHeader>
-              <div>
-                <CardTitle>Event history</CardTitle>
-                <p className="mt-0.5 text-xs text-ink-muted">
-                  {timelineEvents.length} events · opponent team scores only · newest first
-                </p>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-2">
-              <EventTimeline
-                events={timelineEvents}
-                players={playerMap}
-                teamNames={timelineTeamNames}
-                onVoid={(event) => void voidEvent(event)}
-                maxHeight="max-h-[420px]"
-              />
-            </CardContent>
+            <details>
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-semibold text-ink">
+                <span>Match history</span>
+                <span className="text-[11px] font-normal text-ink-faint">
+                  {timelineEvents.length} events
+                </span>
+              </summary>
+              <CardContent className="pt-0">
+                <EventTimeline
+                  events={timelineEvents}
+                  players={playerMap}
+                  teamNames={timelineTeamNames}
+                  onVoid={(event) => void voidEvent(event)}
+                  maxHeight="max-h-[420px]"
+                />
+              </CardContent>
+            </details>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Score check</CardTitle>
-              <Badge tone={scoreMismatch ? 'danger' : manualHomeScore !== null && manualAwayScore !== null ? 'success' : 'neutral'}>
-                {scoreMismatch
-                  ? 'Mismatch'
-                  : manualHomeScore !== null && manualAwayScore !== null
-                    ? 'Reconciled'
-                    : 'Not checked'}
-              </Badge>
-            </CardHeader>
-            <CardContent className="space-y-3 pt-2">
+            <details>
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-semibold text-ink">
+                <span>Score check</span>
+                <Badge tone={scoreMismatch ? 'danger' : manualHomeScore !== null && manualAwayScore !== null ? 'success' : 'neutral'}>
+                  {scoreMismatch
+                    ? 'Mismatch'
+                    : manualHomeScore !== null && manualAwayScore !== null
+                      ? 'Reconciled'
+                      : 'Not checked'}
+                </Badge>
+              </summary>
+              <CardContent className="space-y-3 pt-0">
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-control border border-line bg-canvas/40 p-3 text-center">
                   <p className="truncate text-[11px] text-ink-faint">{homeTeam.shortName} · events</p>
@@ -1410,7 +1410,8 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
                     ? `Mismatch: scoreboard ${manualHomeScore}–${manualAwayScore}, events ${homeScore}–${awayScore}.`
                     : 'Scoreboard matches the event-derived score.'}
               </p>
-            </CardContent>
+              </CardContent>
+            </details>
           </Card>
         </div>
       </div>

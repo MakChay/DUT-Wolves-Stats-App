@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { useAuth } from '@/features/auth/AuthContext'
+import { useFocusMode } from '@/app/FocusModeContext'
 import { ChangePasswordForm } from '@/features/auth/ChangePasswordForm'
 import { dataMode } from '@/services/repositories'
 import { useTheme } from '@/features/theme/ThemeContext'
@@ -114,6 +115,7 @@ export function AppShell({ area }: { area: RoleArea }) {
   const { user, signOut } = useAuth()
   const { theme, toggle } = useTheme()
   const { team } = useTeamScope()
+  const { focusMode } = useFocusMode()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [passwordOpen, setPasswordOpen] = useState(false)
   const location = useLocation()
@@ -144,6 +146,16 @@ export function AppShell({ area }: { area: RoleArea }) {
             Sign out
           </Button>
         </div>
+      </div>
+    )
+  }
+
+  if (focusMode) {
+    return (
+      <div className="min-h-dvh bg-canvas">
+        <main className="mx-auto w-full max-w-[1600px] px-3 py-4 sm:px-4 lg:px-6">
+          <Outlet />
+        </main>
       </div>
     )
   }
