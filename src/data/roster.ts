@@ -64,7 +64,7 @@ export const womenRoster: RosterPlayerSeed[] = [
 export const rosterPlayers: RosterPlayerSeed[] = [...womenRoster, ...menRoster]
 
 export const OFFICIAL_STAFF = {
-  menManager: { id: 'user-manager-men', name: 'Nokwanda Zulu', email: 'nokwanda.zulu@dutwolves.local' },
+  menManager: { id: 'user-manager-men', name: 'Yondisikelela Masali', email: 'yondisikelela.masali@dutwolves.local' },
   womenManager: { id: 'user-manager-women', name: 'Sihle Gumede', email: 'sihle.gumede@dutwolves.local' },
   menCoaches: [
     { id: 'user-coach-men-1', name: 'Coach Mtu', email: 'mtu@dutwolves.local', title: 'Head Coach' },

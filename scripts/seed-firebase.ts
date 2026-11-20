@@ -12,7 +12,7 @@
  *   SEED_STAFF_TEMP_PASSWORD   one-time password for invited staff accounts
  *
  * Only supplied data is written: squads, staff, teams, competition shells and
- * registrations. No fixtures, results, statistics or media are invented.
+ * registrations and supplied event fixtures. No scores, statistics or media are invented.
  */
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -27,6 +27,7 @@ import { doc, getFirestore, writeBatch } from 'firebase/firestore'
 import {
   bootstrapCompetitions,
   bootstrapSeasons,
+  embaFinalsMatches,
   dutPlayers,
   dutRegistrations,
   dutTeams,
@@ -165,6 +166,7 @@ for (const team of [...dutTeams(staffUid), ...opponentTeamRecords()]) add('teams
 for (const player of [...dutPlayers, ...opponentPlayers]) add('players', player)
 for (const player of dutPlayers) add('publicPlayers', publicProjection(player))
 for (const registration of dutRegistrations(staffUid)) add('registrations', registration)
+for (const match of embaFinalsMatches) add('matches', match)
 
 // Firestore batches are limited to 500 writes.
 for (let index = 0; index < writes.length; index += 400) {
@@ -181,7 +183,7 @@ console.log(
     `${opponentPlayers.length} number-only opponent registrations, ` +
     `${bootstrapCompetitions.length} competitions.`,
 )
-console.log('No fixtures, results, statistics, injuries or media were seeded.')
+console.log(`Seeded ${embaFinalsMatches.length} EMBA finals fixtures without scores or statistics.`)
 console.log('Staff accounts must change their temporary password on first sign-in.')
 await signOut(auth)
 process.exit(0)
