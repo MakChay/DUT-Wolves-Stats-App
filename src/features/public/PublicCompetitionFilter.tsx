@@ -31,6 +31,19 @@ export function usePublicCompetitionFilter(data: PublicData, gender: TeamGender)
   return { competitions, competitionId, selectedCompetition, setCompetitionId }
 }
 
+/** Raw `?day=` state shared by the schedule screen. */
+export function usePublicDay(): [string, (day: string) => void] {
+  const [params, setParams] = useSearchParams()
+  const day = params.get('day') ?? ''
+  const setDay = (next: string) => {
+    const updated = new URLSearchParams(params)
+    if (next) updated.set('day', next)
+    else updated.delete('day')
+    setParams(updated, { replace: true })
+  }
+  return [day, setDay]
+}
+
 /** Append the current public filters to internal links. */
 export function usePublicHref() {
   const [params] = useSearchParams()

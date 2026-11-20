@@ -9,7 +9,11 @@ import { Scoreboard } from '@/components/stats/scoreboard'
 import { StatusPill } from '@/components/stats/status-pill'
 import { Table, TableWrap, TBody, TD, TH, THead, TR } from '@/components/ui/table'
 import { PublicGate } from '@/features/public/PublicGate'
-import { usePublicHref } from '@/features/public/PublicCompetitionFilter'
+import {
+  PublicCompetitionFilter,
+  usePublicCompetitionFilter,
+  usePublicHref,
+} from '@/features/public/PublicCompetitionFilter'
 import { playerGameStats, scoreOf } from '@/features/public/publicUtils'
 import type { PublicData } from '@/features/public/usePublicData'
 import { deriveTeamGameStats } from '@/services/analytics/stats'
@@ -38,6 +42,10 @@ function MatchContent({ data, match }: { data: PublicData; match: Match }) {
   const href = usePublicHref()
   const home = data.teamById.get(match.homeTeamId)
   const away = data.teamById.get(match.awayTeamId)
+  const { competitions, competitionId, setCompetitionId } = usePublicCompetitionFilter(
+    data,
+    home?.gender ?? away?.gender ?? 'men',
+  )
   const competition = data.competitionById.get(match.competitionId)
   const snapshot = data.snapshotsByMatch.get(match.id)
   const score = scoreOf(data, match)
@@ -69,7 +77,12 @@ function MatchContent({ data, match }: { data: PublicData; match: Match }) {
             {completed ? 'Results' : 'Fixtures'}
           </Link>
         </Button>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <PublicCompetitionFilter
+            competitions={competitions}
+            value={competitionId}
+            onChange={setCompetitionId}
+          />
           <StatusPill status={match.status} />
           <Badge tone="neutral">{competition?.shortName ?? 'Competition'}</Badge>
         </div>

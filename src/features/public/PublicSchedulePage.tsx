@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageHeader } from '@/components/ui/page-header'
+import { Select } from '@/components/ui/select'
 import { StatusPill } from '@/components/stats/status-pill'
 import { PublicGate } from '@/features/public/PublicGate'
 import {
   PublicCompetitionFilter,
   usePublicCompetition,
+  usePublicDay,
   usePublicHref,
 } from '@/features/public/PublicCompetitionFilter'
 import type { PublicData } from '@/features/public/usePublicData'
@@ -242,6 +244,7 @@ function CompetitionBanner({
 function ScheduleContent({ data }: { data: PublicData }) {
   const href = usePublicHref()
   const [rawCompetitionId, setCompetitionId] = usePublicCompetition()
+  const [rawDay, setDay] = usePublicDay()
   const allTournaments = competitionsForMatches(data, data.matches).filter(
     (competition) => competition.type === 'tournament',
   )
@@ -249,12 +252,20 @@ function ScheduleContent({ data }: { data: PublicData }) {
     rawCompetitionId && allTournaments.some((entry) => entry.id === rawCompetitionId)
       ? rawCompetitionId
       : ''
+  const competitionMatches = data.matches.filter(
+    (match) => match.publicVisible && (!competitionId || match.competitionId === competitionId),
+  )
+  const days = [...new Set(competitionMatches.map((match) => match.tipoff.slice(0, 10)))].sort()
+  const day = rawDay && days.includes(rawDay) ? rawDay : ''
   const tournaments = allTournaments
     .filter((competition) => !competitionId || competition.id === competitionId)
     .map((competition) => ({
       competition,
-      matches: data.matches
-        .filter((match) => match.competitionId === competition.id && match.publicVisible)
+      matches: competitionMatches
+        .filter(
+          (match) =>
+            match.competitionId === competition.id && (!day || match.tipoff.startsWith(day)),
+        )
         .sort((a, b) => a.tipoff.localeCompare(b.tipoff)),
     }))
     .filter((entry) => entry.matches.length > 0)
@@ -264,13 +275,26 @@ function ScheduleContent({ data }: { data: PublicData }) {
       <PageHeader
         eyebrow="Broadcast schedule"
         title="Tournament schedule"
-        description="Every tip-off, court and matchup in one place. Times are shown in South African Standard Time (SAST)."
+        description="Pick a tournament and day to see its tip-offs, courts and matchups. Times are shown in South African Standard Time (SAST)."
         actions={
           <>
             <PublicCompetitionFilter
               competitions={allTournaments}
               value={competitionId}
               onChange={setCompetitionId}
+            />
+            <Select
+              label="Filter schedule by day"
+              value={day || 'all'}
+              onValueChange={(next) => setDay(next === 'all' ? '' : next)}
+              options={[
+                { value: 'all', label: 'All days' },
+                ...days.map((value) => ({
+                  value,
+                  label: formatLongDate(`${value}T12:00:00Z`),
+                })),
+              ]}
+              className="h-9 min-w-[10.5rem] text-xs"
             />
             <Button asChild variant="secondary" size="sm">
               <Link to={href('/fixtures')}>All fixtures</Link>

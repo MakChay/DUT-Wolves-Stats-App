@@ -15,7 +15,7 @@ import type {
   TeamChangeRequest,
   User,
 } from '@/types/domain'
-import { menRoster, OFFICIAL_STAFF, rosterPlayers, womenRoster } from './roster'
+import { ARCHIVED_PLAYER_TIMESTAMP, menRoster, OFFICIAL_STAFF, rosterPlayers, womenRoster } from './roster'
 import { simulateMatch } from './simulate'
 
 const iso = (value: string) => new Date(value).toISOString()
@@ -331,11 +331,12 @@ export const seedPlayers: Player[] = [
     jerseyNumber: entry.jerseyNumber ?? null,
     position: entry.position ?? null,
     secondaryPosition: entry.secondaryPosition ?? null,
-    availability: 'active',
+    availability: entry.archived ? 'inactive' : 'active',
     studentNumber: entry.studentNumber,
     campus: entry.campus,
-    isActive: true,
-    publicVisible: true,
+    isActive: !entry.archived,
+    publicVisible: !entry.archived,
+    archivedAt: entry.archived ? ARCHIVED_PLAYER_TIMESTAMP : null,
     joinedAt: iso('2026-09-01T08:00:00+02:00'),
     registeredCompetitionIds: ['comp-league-2026'],
     createdAt: iso('2026-09-01T08:00:00+02:00'),

@@ -20,7 +20,7 @@ export function PublicLayout() {
     <div className="flex min-h-dvh flex-col bg-canvas">
       <header className="sticky top-0 z-50 border-b border-line bg-canvas/80 shadow-card backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center gap-3 px-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
+          <Link to={{ pathname: '/', search }} className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
             <BrandMark />
             <span className="leading-none">
               <span className="block text-[13px] font-bold tracking-[0.14em] text-ink">DUT WOLVES</span>

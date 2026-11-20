@@ -21,6 +21,7 @@
     "import:ussa-draft": "node scripts/import-ussa-wits-2026-draft.mjs",
     "reset:live-and-practice": "node scripts/reset-live-and-add-practice.mjs",
     "update:women-roster": "node scripts/update-women-roster.mjs",
+    "archive:women-players": "node scripts/archive-women-players.mjs",
     "publish:ussa-2026": "node scripts/publish-ussa-2026.mjs",
     "backfill:firestore-projections": "node scripts/backfill-firestore-projections.mjs",
     "preview": "vite preview"

@@ -7,7 +7,7 @@ import type {
   Team,
   UserRole,
 } from '../types/domain'
-import { OFFICIAL_STAFF, rosterPlayers } from './roster'
+import { ARCHIVED_PLAYER_TIMESTAMP, OFFICIAL_STAFF, rosterPlayers } from './roster'
 
 /**
  * Initial Firestore content.
@@ -114,12 +114,12 @@ export const dutPlayers: Player[] = rosterPlayers.map((entry) => ({
   jerseyNumber: entry.jerseyNumber ?? null,
   position: entry.position ?? null,
   secondaryPosition: entry.secondaryPosition ?? null,
-  availability: 'active',
+  availability: entry.archived ? 'inactive' : 'active',
   studentNumber: entry.studentNumber,
   campus: entry.campus,
-  isActive: true,
-  publicVisible: true,
-  archivedAt: null,
+  isActive: !entry.archived,
+  publicVisible: !entry.archived,
+  archivedAt: entry.archived ? ARCHIVED_PLAYER_TIMESTAMP : null,
   joinedAt: '2026-02-01T00:00:00.000Z',
   registeredCompetitionIds: ['comp-league-2026'],
 }))
