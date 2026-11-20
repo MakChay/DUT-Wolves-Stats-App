@@ -1,4 +1,4 @@
-import { loadEnv } from 'vite'
+import { loadSecureEnv } from './lib/secure-env.mjs'
 import { initializeApp, deleteApp } from 'firebase/app'
 import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth'
 import {
@@ -23,13 +23,13 @@ import {
  *   node scripts/publish-ussa-2026.mjs --unpublish
  */
 const COMPETITION_ID = 'comp-ussa-wits-2026-draft'
-const env = { ...loadEnv('development', process.cwd(), ''), ...process.env }
+const env = loadSecureEnv()
 const publish = !process.argv.includes('--unpublish')
 const email = env.FIREBASE_ADMIN_EMAIL || env.SEED_ADMIN_EMAIL
 const password = env.FIREBASE_ADMIN_PASSWORD || env.SEED_ADMIN_PASSWORD
 
 if (!email || !password) {
-  throw new Error('Missing admin credentials. Set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD in .env.local.')
+  throw new Error('Missing admin credentials. Set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD in the encrypted local env store.')
 }
 
 const app = initializeApp({

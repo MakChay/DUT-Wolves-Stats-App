@@ -14,12 +14,19 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { PlayerAvatar } from '@/components/stats/player-avatar'
 import { PublicGate } from '@/features/public/PublicGate'
 import {
+  PublicCompetitionFilter,
+  usePublicCompetitionFilter,
+  usePublicHref,
+} from '@/features/public/PublicCompetitionFilter'
+import {
+  filterByCompetition,
   genderLabel,
   scoreOf,
-  standingsForGender,
+  standingsByCompetitionForGender,
+  type CompetitionStandings,
 } from '@/features/public/publicUtils'
 import type { PublicData } from '@/features/public/usePublicData'
-import type { Team } from '@/types/domain'
+import type { StandingRow, Team } from '@/types/domain'
 import { OFFICIAL_STAFF } from '@/data/roster'
 import { formatDate, formatTime } from '@/utils/format'
 
@@ -40,12 +47,22 @@ function staffFor(team: Team) {
 }
 
 function TeamDetailContent({ data, team }: { data: PublicData; team: Team }) {
+  const href = usePublicHref()
+  const { competitions, competitionId, setCompetitionId } = usePublicCompetitionFilter(data, team.gender)
   const roster = data.players.filter((player) => player.teamId === team.id)
   const publicRoster = roster.filter((player) => player.publicVisible && player.isActive)
-  const standing = standingsForGender(data, team.gender).find((row) => row.teamId === team.id)
-  const matches = data.matches
-    .filter((match) => match.homeTeamId === team.id || match.awayTeamId === team.id)
-    .sort((a, b) => a.tipoff.localeCompare(b.tipoff))
+  const standingEntries: { entry: CompetitionStandings; row: StandingRow }[] = []
+  for (const entry of standingsByCompetitionForGender(data, team.gender)) {
+    if (competitionId && entry.competition.id !== competitionId) continue
+    const row = entry.rows.find((candidate) => candidate.teamId === team.id)
+    if (row) standingEntries.push({ entry, row })
+  }
+  const standing = standingEntries.find((item) => item.entry.completed > 0) ?? standingEntries[0]
+
+  const matches = filterByCompetition(
+    data.matches.filter((match) => match.homeTeamId === team.id || match.awayTeamId === team.id),
+    competitionId,
+  ).sort((a, b) => a.tipoff.localeCompare(b.tipoff))
   const upcoming = matches.filter((match) => match.status === 'scheduled' || match.status === 'live')
   const results = matches
     .filter((match) => match.status === 'completed')
@@ -57,14 +74,21 @@ function TeamDetailContent({ data, team }: { data: PublicData; team: Team }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Button asChild variant="ghost" size="sm">
-          <Link to="/teams">
+          <Link to={href('/teams')}>
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
             All teams
           </Link>
         </Button>
-        <Badge tone={isDut ? 'accent' : 'neutral'}>
-          {isDut ? 'DUT Wolves' : 'Opponent'} · {genderLabel(team.gender)}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <PublicCompetitionFilter
+            competitions={competitions}
+            value={competitionId}
+            onChange={setCompetitionId}
+          />
+          <Badge tone={isDut ? 'accent' : 'neutral'}>
+            {isDut ? 'DUT Wolves' : 'Opponent'} · {genderLabel(team.gender)}
+          </Badge>
+        </div>
       </div>
 
       <section className="relative overflow-hidden rounded-card border border-line bg-sidebar">
@@ -91,14 +115,17 @@ function TeamDetailContent({ data, team }: { data: PublicData; team: Team }) {
             <div className="mt-4 flex flex-wrap items-center gap-2">
               {standing ? (
                 <>
+                  <span className="rounded-control border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent">
+                    {standing.entry.competition.shortName ?? 'Tournament'}
+                  </span>
                   <span className="rounded-control border border-line bg-canvas/60 px-3 py-1.5 text-xs font-semibold text-ink">
-                    {standing.wins}–{standing.losses}
+                    {standing.row.wins}–{standing.row.losses}
                   </span>
                   <span className="rounded-control border border-line bg-canvas/60 px-3 py-1.5 text-xs text-ink-muted">
-                    {standing.played} played
+                    {standing.row.played} played
                   </span>
                   <span className="rounded-control border border-line bg-canvas/60 px-3 py-1.5 text-xs text-ink-muted">
-                    {standing.pointsFor} PF · {standing.pointsAgainst} PA
+                    {standing.row.pointsFor} PF · {standing.row.pointsAgainst} PA
                   </span>
                 </>
               ) : (
@@ -146,7 +173,7 @@ function TeamDetailContent({ data, team }: { data: PublicData; team: Team }) {
                 {publicRoster.map((player) => (
                   <Link
                     key={player.id}
-                    to={`/players/${player.id}`}
+                    to={href(`/players/${player.id}`)}
                     className="flex items-center gap-2.5 rounded-control border border-line/70 px-2.5 py-2 transition hover:border-accent/50"
                   >
                     <PlayerAvatar player={player} size="sm" />
@@ -214,7 +241,7 @@ function TeamDetailContent({ data, team }: { data: PublicData; team: Team }) {
                 return (
                   <Link
                     key={match.id}
-                    to={`/matches/${match.id}`}
+                    to={href(`/matches/${match.id}`)}
                     className="flex items-center justify-between gap-2 rounded-control border border-line/70 px-3 py-2 transition hover:border-accent/50"
                   >
                     <div className="min-w-0">
@@ -258,7 +285,7 @@ function TeamDetailContent({ data, team }: { data: PublicData; team: Team }) {
                 return (
                   <Link
                     key={match.id}
-                    to={`/matches/${match.id}`}
+                    to={href(`/matches/${match.id}`)}
                     className="flex items-center justify-between gap-2 rounded-control border border-line/70 px-3 py-2 transition hover:border-accent/50"
                   >
                     <div className="min-w-0">
@@ -298,6 +325,7 @@ function TeamDetailContent({ data, team }: { data: PublicData; team: Team }) {
 
 export function PublicTeamPage() {
   const { teamId } = useParams()
+  const href = usePublicHref()
   return (
     <PublicGate>
       {(data) => {
@@ -310,7 +338,7 @@ export function PublicTeamPage() {
               description="This team is not published on the public site."
               action={
                 <Button asChild>
-                  <Link to="/teams">Back to teams</Link>
+                  <Link to={href('/teams')}>Back to teams</Link>
                 </Button>
               }
             />

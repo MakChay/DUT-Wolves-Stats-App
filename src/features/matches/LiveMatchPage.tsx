@@ -16,6 +16,7 @@ import {
   RotateCcw,
   Square,
   UserRoundPlus,
+  Users,
   WifiOff,
 } from 'lucide-react'
 import type {
@@ -225,6 +226,7 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
   const { user } = useAuth()
   const { toast } = useToast()
   const navigate = useNavigate()
+  const [currentRosters, setCurrentRosters] = useState<MatchRoster[]>(rosters)
 
   const ownTeam = allTeams.find((team) => team.id === ownTeamId) ?? allTeams[0]!
   const opponentId = initialMatch.homeTeamId === ownTeamId ? initialMatch.awayTeamId : initialMatch.homeTeamId
@@ -233,8 +235,8 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
   const awayTeam = allTeams.find((team) => team.id === initialMatch.awayTeamId) ?? opponent
 
   const ownRoster = useMemo(
-    () => rosters.filter((entry) => entry.teamId === ownTeamId),
-    [rosters, ownTeamId],
+    () => currentRosters.filter((entry) => entry.teamId === ownTeamId),
+    [currentRosters, ownTeamId],
   )
   const playerById = useMemo(() => new Map(players.map((player) => [player.id, player])), [players])
   const playerMap = useMemo(
@@ -277,6 +279,9 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
   const [syncing, setSyncing] = useState(false)
   const [lastAction, setLastAction] = useState<string | null>(null)
   const [subOpen, setSubOpen] = useState(false)
+  const [startersOpen, setStartersOpen] = useState(false)
+  const [starterChoice, setStarterChoice] = useState<string[]>([])
+  const [savingStarters, setSavingStarters] = useState(false)
   const [endOpen, setEndOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [ownReport, setOwnReport] = useState<PostMatchTeamReport | null>(() =>
@@ -700,6 +705,57 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
     flash(incoming ? `${jerseyLabel(incoming.jerseyNumber)} ${incoming.lastName} checked in` : 'Substitution recorded')
   }
 
+  const openStarters = () => {
+    setStarterChoice(ownRoster.filter((entry) => entry.isStarter).map((entry) => entry.playerId))
+    setStartersOpen(true)
+  }
+
+  const toggleStarter = (playerId: string) => {
+    setStarterChoice((current) =>
+      current.includes(playerId)
+        ? current.filter((id) => id !== playerId)
+        : current.length >= 5
+          ? current
+          : [...current, playerId],
+    )
+  }
+
+  const saveStarters = async () => {
+    if (starterChoice.length !== 5 || completed || savingStarters) return
+    setSavingStarters(true)
+    try {
+      const saved = await repositories.rosters.setStarters(
+        match.id,
+        ownTeamId,
+        starterChoice,
+      )
+      const savedIds = new Set(saved.map((entry) => entry.playerId))
+      setCurrentRosters((current) =>
+        current.map((entry) =>
+          entry.teamId === ownTeamId && savedIds.has(entry.playerId)
+            ? { ...entry, isStarter: saved.find((row) => row.playerId === entry.playerId)?.isStarter ?? false }
+            : entry,
+        ),
+      )
+      setOnCourt(new Set(starterChoice))
+      setSelectedPlayerId(null)
+      setStartersOpen(false)
+      toast({
+        title: 'Starting five saved',
+        description: 'The selected players are now on court. Use substitutions for later changes.',
+        tone: 'success',
+      })
+    } catch (error) {
+      toast({
+        title: 'Could not save starting five',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        tone: 'error',
+      })
+    } finally {
+      setSavingStarters(false)
+    }
+  }
+
   const recordTimeout = (teamId: string, label: string) => {
     if (completed) return
     record('TIMEOUT', undefined, teamId, 0)
@@ -972,19 +1028,30 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
                   Choose an on-court player to record individual statistics.
                 </p>
               </div>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setSubOpen(true)
-                  setSubOut('')
-                  setSubIn('')
-                }}
-                disabled={completed}
-              >
-                <UserRoundPlus className="h-4 w-4" aria-hidden="true" />
-                Substitution
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={openStarters}
+                  disabled={completed}
+                >
+                  <Users className="h-4 w-4" aria-hidden="true" />
+                  Starting five
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setSubOpen(true)
+                    setSubOut('')
+                    setSubIn('')
+                  }}
+                  disabled={completed}
+                >
+                  <UserRoundPlus className="h-4 w-4" aria-hidden="true" />
+                  Substitution
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3 pt-3">
               <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-5">
@@ -1413,6 +1480,93 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
           </Card>
         </div>
       </div>
+
+      <Dialog open={startersOpen} onOpenChange={setStartersOpen}>
+        <DialogContent
+          title="Choose the starting five"
+          description="Coaches pick the five each game. Select exactly five players; the rest go to the bench. Saving places them on court immediately."
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setStartersOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => void saveStarters()}
+                disabled={starterChoice.length !== 5 || completed || savingStarters}
+              >
+                {savingStarters ? 'Saving…' : 'Save starting five'}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-3">
+            <div className="flex items-center justify-between rounded-control border border-line bg-canvas/50 px-3 py-2">
+              <span className="text-xs text-ink-muted">Players selected</span>
+              <span
+                className={cn(
+                  'stat-num text-sm font-bold',
+                  starterChoice.length === 5 ? 'text-success' : 'text-accent',
+                )}
+              >
+                {starterChoice.length} / 5
+              </span>
+            </div>
+            <div className="grid max-h-[45vh] grid-cols-1 gap-1.5 overflow-y-auto sm:grid-cols-2">
+              {ownRoster.map(({ playerId, jerseyNumber }) => {
+                const player = playerById.get(playerId)
+                if (!player) return null
+                const isChosen = starterChoice.includes(playerId)
+                return (
+                  <button
+                    key={playerId}
+                    type="button"
+                    onClick={() => toggleStarter(playerId)}
+                    aria-pressed={isChosen}
+                    className={cn(
+                      'flex items-center gap-3 rounded-control border px-3 py-2 text-left transition',
+                      isChosen
+                        ? 'border-accent/60 bg-accent/10'
+                        : 'border-line bg-canvas/40 hover:border-white/20',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'stat-num w-9 shrink-0 text-center text-xl font-black leading-none',
+                        isChosen ? 'text-accent' : 'text-ink-muted',
+                      )}
+                    >
+                      {jerseyNumber ?? '—'}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-xs font-semibold text-ink">
+                        {player.firstName} {player.lastName}
+                      </span>
+                      <span className="block text-[10px] uppercase tracking-wide text-ink-faint">
+                        {player.position ?? 'Player'}
+                      </span>
+                    </span>
+                    <span
+                      className={cn(
+                        'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold',
+                        isChosen
+                          ? 'border-accent bg-accent text-canvas'
+                          : 'border-line text-transparent',
+                      )}
+                    >
+                      ✓
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            {ownRoster.length < 5 ? (
+              <p className="rounded-control border border-warning/30 bg-warning/10 px-3 py-2 text-[11px] text-warning">
+                Fewer than five eligible players are available in the squad.
+              </p>
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={subOpen} onOpenChange={setSubOpen}>
         <DialogContent

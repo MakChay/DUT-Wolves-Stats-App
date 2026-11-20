@@ -143,15 +143,26 @@ function RosterView({ analytics }: { analytics: TeamAnalytics }) {
               </ul>
             )}
             <p className="mt-3 flex items-center justify-between gap-2 text-[11px] leading-relaxed text-ink-faint">
-              Match roster snapshots stay read-only. Season roster details are managed on the
-              Players page.
-              <Link
-                to="/manager/players"
-                className="inline-flex shrink-0 items-center gap-1 font-semibold text-accent hover:underline"
-              >
-                <Pencil className="h-3 w-3" aria-hidden="true" />
-                Edit roster
-              </Link>
+              Coaches choose the starting five per game on the scoring screen. Season roster details
+              are managed on the Players page.
+              <span className="flex shrink-0 items-center gap-3">
+                {match && match.status !== 'completed' ? (
+                  <Link
+                    to={`/manager/match/${match.id}`}
+                    className="inline-flex items-center gap-1 font-semibold text-accent hover:underline"
+                  >
+                    <ClipboardList className="h-3 w-3" aria-hidden="true" />
+                    Pick starting five
+                  </Link>
+                ) : null}
+                <Link
+                  to="/manager/players"
+                  className="inline-flex items-center gap-1 font-semibold text-accent hover:underline"
+                >
+                  <Pencil className="h-3 w-3" aria-hidden="true" />
+                  Edit roster
+                </Link>
+              </span>
             </p>
           </CardContent>
         </Card>

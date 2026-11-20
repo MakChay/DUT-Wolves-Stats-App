@@ -7,7 +7,18 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { PlayerAvatar } from '@/components/stats/player-avatar'
 import { PublicGate } from '@/features/public/PublicGate'
 import { PublicTeamSwitch, usePublicGender } from '@/features/public/PublicTeamSwitch'
-import { genderLabel, standingsForGender, teamsForGender } from '@/features/public/publicUtils'
+import {
+  PublicCompetitionFilter,
+  usePublicCompetitionFilter,
+  usePublicHref,
+} from '@/features/public/PublicCompetitionFilter'
+import {
+  filterByCompetition,
+  genderLabel,
+  matchesForGender,
+  standingsByCompetitionForGender,
+  teamsForGender,
+} from '@/features/public/publicUtils'
 import type { PublicData } from '@/features/public/usePublicData'
 import type { TeamGender } from '@/types/domain'
 import { jerseyLabel } from '@/types/domain'
@@ -21,8 +32,20 @@ function TeamsContent({
   gender: TeamGender
   setGender: (gender: TeamGender) => void
 }) {
-  const teams = teamsForGender(data, gender)
-  const standings = standingsForGender(data, gender)
+  const href = usePublicHref()
+  const { competitions, competitionId, setCompetitionId } = usePublicCompetitionFilter(data, gender)
+  const competitionMatches = filterByCompetition(matchesForGender(data, gender), competitionId)
+  const participatingIds = new Set(
+    competitionMatches.flatMap((match) => [match.homeTeamId, match.awayTeamId]),
+  )
+  const teams = teamsForGender(data, gender).filter(
+    (team) => !competitionId || participatingIds.has(team.id),
+  )
+  const standingsByCompetition = standingsByCompetitionForGender(data, gender)
+  const standingsEntry = competitionId
+    ? standingsByCompetition.find((entry) => entry.competition.id === competitionId)
+    : standingsByCompetition.find((entry) => entry.completed > 0) ?? standingsByCompetition[0]
+  const standings = standingsEntry?.rows ?? []
   const dutTeam = teams.find((team) => team.id === 'team-men' || team.id === 'team-women')
 
   return (
@@ -30,8 +53,19 @@ function TeamsContent({
       <PageHeader
         eyebrow="Teams"
         title={`${genderLabel(gender)} teams`}
-        description="DUT Wolves men's and women's squads. Only players who have opted in to a public profile are listed."
-        actions={<PublicTeamSwitch gender={gender} onChange={setGender} />}
+        description={`Squads in ${
+          standingsEntry ? standingsEntry.competition.name : 'all tournaments'
+        }. Only players who have opted in to a public profile are listed.`}
+        actions={
+          <>
+            <PublicCompetitionFilter
+              competitions={competitions}
+              value={competitionId}
+              onChange={setCompetitionId}
+            />
+            <PublicTeamSwitch gender={gender} onChange={setGender} />
+          </>
+        }
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -46,14 +80,16 @@ function TeamsContent({
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <CardTitle>
-                      <Link to={`/teams/${team.id}`} className="transition hover:text-accent">
+                      <Link to={href(`/teams/${team.id}`)} className="transition hover:text-accent">
                         {team.name}
                       </Link>
                     </CardTitle>
                     {isDut ? <Badge tone="accent">DUT Wolves</Badge> : <Badge tone="neutral">Opponent</Badge>}
                   </div>
                   <p className="mt-0.5 text-xs text-ink-muted">
-                    {standing ? `${standing.wins}–${standing.losses} · ${standing.played} played` : 'No completed matches'}
+                    {standing
+                      ? `${standingsEntry?.competition.shortName ?? 'Tournament'}: ${standing.wins}–${standing.losses} · ${standing.played} played`
+                      : 'No completed matches'}
                     {team.id === dutTeam?.id ? ' · Home team' : ''}
                   </p>
                 </div>
@@ -69,7 +105,7 @@ function TeamsContent({
                     {publicRoster.map((player) => (
                       <Link
                         key={player.id}
-                        to={`/players/${player.id}`}
+                        to={href(`/players/${player.id}`)}
                         className="flex items-center gap-2.5 rounded-control border border-line/70 px-2.5 py-2 transition hover:border-accent/50"
                       >
                         <PlayerAvatar player={player} size="sm" />
@@ -96,6 +132,14 @@ function TeamsContent({
           )
         })}
       </div>
+
+      {teams.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="No teams published"
+          description="Team information is not available for this tournament."
+        />
+      ) : null}
     </div>
   )
 }
@@ -104,13 +148,7 @@ export function PublicTeamsPage() {
   const [gender, setGender] = usePublicGender()
   return (
     <PublicGate>
-      {(data) =>
-        teamsForGender(data, gender).length === 0 ? (
-          <EmptyState icon={Users} title="No teams published" description="Team information is not available." />
-        ) : (
-          <TeamsContent data={data} gender={gender} setGender={setGender} />
-        )
-      }
+      {(data) => <TeamsContent data={data} gender={gender} setGender={setGender} />}
     </PublicGate>
   )
 }

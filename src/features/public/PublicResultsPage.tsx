@@ -7,7 +7,17 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PublicGate } from '@/features/public/PublicGate'
 import { PublicTeamSwitch, usePublicGender } from '@/features/public/PublicTeamSwitch'
-import { genderLabel, matchesForGender, scoreOf } from '@/features/public/publicUtils'
+import {
+  PublicCompetitionFilter,
+  usePublicCompetitionFilter,
+  usePublicHref,
+} from '@/features/public/PublicCompetitionFilter'
+import {
+  filterByCompetition,
+  genderLabel,
+  matchesForGender,
+  scoreOf,
+} from '@/features/public/publicUtils'
 import type { PublicData } from '@/features/public/usePublicData'
 import type { TeamGender } from '@/types/domain'
 import { formatDate, formatTime } from '@/utils/format'
@@ -22,7 +32,10 @@ function ResultsContent({
   gender: TeamGender
   setGender: (gender: TeamGender) => void
 }) {
-  const results = matchesForGender(data, gender)
+  const href = usePublicHref()
+  const { competitions, competitionId, selectedCompetition, setCompetitionId } =
+    usePublicCompetitionFilter(data, gender)
+  const results = filterByCompetition(matchesForGender(data, gender), competitionId)
     .filter((match) => match.status === 'completed')
     .sort((a, b) => b.tipoff.localeCompare(a.tipoff))
 
@@ -31,18 +44,31 @@ function ResultsContent({
       <PageHeader
         eyebrow="Results"
         title={`${genderLabel(gender)} results`}
-        description="Final scores derived from recorded match events. Corrections are logged rather than overwriting history."
-        actions={<PublicTeamSwitch gender={gender} onChange={setGender} />}
+        description={`Final scores from ${
+          selectedCompetition ? selectedCompetition.name : 'all tournaments'
+        }. Corrections are logged rather than overwriting history.`}
+        actions={
+          <>
+            <PublicCompetitionFilter
+              competitions={competitions}
+              value={competitionId}
+              onChange={setCompetitionId}
+            />
+            <PublicTeamSwitch gender={gender} onChange={setGender} />
+          </>
+        }
       />
 
       {results.length === 0 ? (
         <EmptyState
           icon={Trophy}
           title="No results yet"
-          description={`No completed ${genderLabel(gender).toLowerCase()} matches have been published.`}
+          description={`No completed ${genderLabel(gender).toLowerCase()} matches ${
+            selectedCompetition ? `in ${selectedCompetition.name}` : 'have been published'
+          } yet.`}
           action={
             <Button asChild variant="secondary">
-              <Link to="/fixtures">View fixtures</Link>
+              <Link to={href('/fixtures')}>View fixtures</Link>
             </Button>
           }
         />
@@ -102,7 +128,7 @@ function ResultsContent({
                     <Badge tone="neutral">{competition?.shortName ?? 'Competition'}</Badge>
                     <span className="truncate text-[11px] text-ink-faint">{match.venue}</span>
                     <Button asChild size="sm" variant="ghost">
-                      <Link to={`/matches/${match.id}`}>Match centre</Link>
+                      <Link to={href(`/matches/${match.id}`)}>Match centre</Link>
                     </Button>
                   </div>
                 </CardContent>

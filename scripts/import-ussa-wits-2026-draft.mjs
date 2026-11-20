@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises'
-import { loadEnv } from 'vite'
+import { loadSecureEnv } from './lib/secure-env.mjs'
 import { initializeApp, deleteApp } from 'firebase/app'
 import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth'
 import {
@@ -14,7 +14,7 @@ import {
 const schedule = JSON.parse(
   await readFile(new URL('../src/data/ussa-wits-2026.json', import.meta.url), 'utf8'),
 )
-const env = { ...loadEnv('development', process.cwd(), ''), ...process.env }
+const env = loadSecureEnv()
 const apply = process.argv.includes('--apply')
 const adminEmail = env.FIREBASE_ADMIN_EMAIL || env.SEED_ADMIN_EMAIL
 const adminPassword = env.FIREBASE_ADMIN_PASSWORD || env.SEED_ADMIN_PASSWORD
@@ -114,7 +114,7 @@ function createApp() {
   const missing = required.filter((key) => !env[key])
   if (missing.length) throw new Error(`Missing required environment variables: ${missing.join(', ')}`)
   if (!adminEmail || !adminPassword) {
-    throw new Error('Missing admin credentials. Set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD in .env.local.')
+    throw new Error('Missing admin credentials. Set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD in the encrypted local env store.')
   }
 
   return initializeApp({

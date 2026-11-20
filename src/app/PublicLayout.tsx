@@ -1,6 +1,6 @@
 import { Moon, Sun, Menu, X, Camera } from 'lucide-react'
 import { useState } from 'react'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { publicNav } from '@/app/navigation'
 import { BrandMark } from '@/components/brand/brand-mark'
 import { WolfWatermark } from '@/components/brand/wolf-watermark'
@@ -13,6 +13,7 @@ import { cn } from '@/utils/cn'
 export function PublicLayout() {
   const { user } = useAuth()
   const { theme, toggle } = useTheme()
+  const { search } = useLocation()
   const [open, setOpen] = useState(false)
 
   return (
@@ -33,7 +34,7 @@ export function PublicLayout() {
             {publicNav.map((item) => (
               <NavLink
                 key={item.to}
-                to={item.to}
+                to={{ pathname: item.to, search }}
                 end={item.end}
                 className={({ isActive }) =>
                   cn(
@@ -86,7 +87,7 @@ export function PublicLayout() {
               {publicNav.map((item) => (
                 <NavLink
                   key={item.to}
-                  to={item.to}
+                  to={{ pathname: item.to, search }}
                   end={item.end}
                   onClick={() => setOpen(false)}
                   className={({ isActive }) =>

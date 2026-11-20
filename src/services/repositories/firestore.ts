@@ -322,6 +322,50 @@ export const firestoreRepositories: Repositories = {
         refreshLiveRoster ? [teamId] : [],
       )
     },
+    async setStarters(matchId, teamId, starterPlayerIds) {
+      const match = await readOne<Match>(COLLECTIONS.matches, matchId)
+      if (!match) throw new Error('Match not found.')
+      if (match.status === 'completed') {
+        throw new Error('The starting five cannot be changed after a match is completed.')
+      }
+
+      const [stored, squad] = await Promise.all([
+        readWhereFields<MatchRoster>(COLLECTIONS.rosters, [
+          ['matchId', matchId],
+          ['teamId', teamId],
+        ]),
+        readWhere<Player>(COLLECTIONS.players, 'teamId', teamId),
+      ])
+      const eligible = squad.filter(
+        (player) => player.isActive && player.availability !== 'inactive',
+      )
+      const starters = new Set(starterPlayerIds)
+      const rows: MatchRoster[] = eligible.map((player) => {
+        const existing = stored.find((entry) => entry.playerId === player.id)
+        return {
+          id: existing?.id ?? `${matchId}_${teamId}_${player.id}`,
+          matchId,
+          teamId,
+          playerId: player.id,
+          jerseyNumber: player.jerseyNumber,
+          isStarter: starters.has(player.id),
+          isActive: player.availability === 'active',
+        }
+      })
+
+      const batch = writeBatch(db())
+      for (const row of rows) {
+        batch.set(doc(db(), COLLECTIONS.rosters, row.id), clean(row))
+      }
+      const keepIds = new Set(rows.map((row) => row.id))
+      for (const entry of stored) {
+        if (!keepIds.has(entry.id)) {
+          batch.delete(doc(db(), COLLECTIONS.rosters, entry.id))
+        }
+      }
+      await batch.commit()
+      return rows
+    },
   },
 
   events: {

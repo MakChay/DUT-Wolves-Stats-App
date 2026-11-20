@@ -36,6 +36,7 @@ import { AdminMatchesPage } from '@/features/admin/AdminMatchesPage'
 import { AdminAuditPage } from '@/features/admin/AdminAuditPage'
 import { PublicHomePage } from '@/features/public/PublicHomePage'
 import { PublicLivePage } from '@/features/public/PublicLivePage'
+import { PublicSchedulePage } from '@/features/public/PublicSchedulePage'
 import { PublicFixturesPage } from '@/features/public/PublicFixturesPage'
 import { PublicResultsPage } from '@/features/public/PublicResultsPage'
 import { PublicTeamsPage } from '@/features/public/PublicTeamsPage'
@@ -66,6 +67,7 @@ export default function App() {
       <Route element={<PublicLayout />}>
         <Route index element={<PublicHomePage />} />
         <Route path="live" element={<PublicLivePage />} />
+        <Route path="schedule" element={<PublicSchedulePage />} />
         <Route path="fixtures" element={<PublicFixturesPage />} />
         <Route path="results" element={<PublicResultsPage />} />
         <Route path="matches/:matchId" element={<PublicMatchPage />} />

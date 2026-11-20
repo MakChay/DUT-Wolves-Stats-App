@@ -8,7 +8,17 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { Scoreboard } from '@/components/stats/scoreboard'
 import { PublicGate } from '@/features/public/PublicGate'
 import { PublicTeamSwitch, usePublicGender } from '@/features/public/PublicTeamSwitch'
-import { genderLabel, matchesForGender, scoreOf } from '@/features/public/publicUtils'
+import {
+  PublicCompetitionFilter,
+  usePublicCompetitionFilter,
+  usePublicHref,
+} from '@/features/public/PublicCompetitionFilter'
+import {
+  filterByCompetition,
+  genderLabel,
+  matchesForGender,
+  scoreOf,
+} from '@/features/public/publicUtils'
 import type { PublicData } from '@/features/public/usePublicData'
 import type { Match, TeamGender } from '@/types/domain'
 import { formatDate, formatTime } from '@/utils/format'
@@ -50,7 +60,10 @@ function LiveContent({
   gender: TeamGender
   setGender: (gender: TeamGender) => void
 }) {
-  const genderMatches = matchesForGender(data, gender)
+  const href = usePublicHref()
+  const { competitions, competitionId, selectedCompetition, setCompetitionId } =
+    usePublicCompetitionFilter(data, gender)
+  const genderMatches = filterByCompetition(matchesForGender(data, gender), competitionId)
   const live = genderMatches.filter((match) => match.status === 'live' || match.status === 'paused')
   const next = genderMatches
     .filter((match) => match.status === 'scheduled')
@@ -66,8 +79,19 @@ function LiveContent({
       <PageHeader
         eyebrow="Live scores"
         title="Live match centre"
-        description="Scores and match status update automatically as courtside events are recorded."
-        actions={<PublicTeamSwitch gender={gender} onChange={setGender} />}
+        description={`Scores and match status from ${
+          selectedCompetition ? selectedCompetition.name : 'all tournaments'
+        } update automatically as courtside events are recorded.`}
+        actions={
+          <>
+            <PublicCompetitionFilter
+              competitions={competitions}
+              value={competitionId}
+              onChange={setCompetitionId}
+            />
+            <PublicTeamSwitch gender={gender} onChange={setGender} />
+          </>
+        }
       />
 
       <div className="flex items-center gap-2 rounded-card border border-line bg-surface/60 px-4 py-2.5 text-[11px] text-ink-faint">
@@ -86,10 +110,12 @@ function LiveContent({
           <EmptyState
             icon={Radio}
             title="No match in progress"
-            description={`There is no live ${genderLabel(gender).toLowerCase()} fixture right now. Upcoming games are listed below.`}
+            description={`There is no live ${genderLabel(gender).toLowerCase()} fixture ${
+              selectedCompetition ? `in ${selectedCompetition.name}` : 'right now'
+            }. Upcoming games are listed below.`}
             action={
               <Button asChild variant="secondary">
-                <Link to="/fixtures">View fixtures</Link>
+                <Link to={href('/fixtures')}>View fixtures</Link>
               </Button>
             }
           />
@@ -123,7 +149,7 @@ function LiveContent({
               <p className="mt-0.5 text-xs text-ink-muted">{genderLabel(gender)} team</p>
             </div>
             <Button asChild variant="ghost" size="sm">
-              <Link to="/fixtures">
+              <Link to={href('/fixtures')}>
                 All
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               </Link>
@@ -163,7 +189,7 @@ function LiveContent({
               <p className="mt-0.5 text-xs text-ink-muted">{genderLabel(gender)} team</p>
             </div>
             <Button asChild variant="ghost" size="sm">
-              <Link to="/results">
+              <Link to={href('/results')}>
                 All
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               </Link>

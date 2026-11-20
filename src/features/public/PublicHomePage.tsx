@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
+  CalendarClock,
   CalendarDays,
   Camera,
   MapPin,
@@ -19,13 +20,22 @@ import { BarList } from '@/components/stats/charts'
 import { formatDate, formatTime, signed } from '@/utils/format'
 import { PublicGate } from '@/features/public/PublicGate'
 import { PublicTeamSwitch, usePublicGender } from '@/features/public/PublicTeamSwitch'
+import {
+  PublicCompetitionFilter,
+  usePublicCompetitionFilter,
+  usePublicHref,
+} from '@/features/public/PublicCompetitionFilter'
 import type { PublicData } from '@/features/public/usePublicData'
 import { dataMode } from '@/services/repositories'
+import { aggregate } from '@/services/analytics/stats'
 import {
+  displayRound,
+  filterByCompetition,
   genderLabel,
   matchesForGender,
+  playerGameStats,
   scoreOf,
-  standingsForGender,
+  standingsByCompetitionForGender,
 } from '@/features/public/publicUtils'
 import { cn } from '@/utils/cn'
 import { WolfWatermark } from '@/components/brand/wolf-watermark'
@@ -61,7 +71,9 @@ function FixtureRow({
           {match.homeTeamId === ownTeamId ? 'vs' : '@'} {opponent?.name ?? 'Opponent'}
         </p>
         <p className="truncate text-[11px] text-ink-faint">
-          {match.round} · {formatTime(match.tipoff)} · {match.venue}
+          {[displayRound(match.round), formatTime(match.tipoff), match.venue]
+            .filter(Boolean)
+            .join(' · ')}
         </p>
       </div>
       <StatusPill status={match.status} />
@@ -78,7 +90,10 @@ function HomeContent({
   gender: TeamGender
   setGender: (gender: TeamGender) => void
 }) {
-  const genderMatches = matchesForGender(data, gender)
+  const href = usePublicHref()
+  const { competitions, competitionId, setCompetitionId } =
+    usePublicCompetitionFilter(data, gender)
+  const genderMatches = filterByCompetition(matchesForGender(data, gender), competitionId)
   const dutTeam: Team | undefined = data.teams.find(
     (team) => team.gender === gender && team.id.startsWith('team-') && !team.id.includes('ukzn') && (team.id === 'team-men' || team.id === 'team-women'),
   )
@@ -91,9 +106,24 @@ function HomeContent({
   const recent = genderMatches
     .filter((match) => match.status === 'completed')
     .sort((a, b) => b.tipoff.localeCompare(a.tipoff))
-  const standings = standingsForGender(data, gender)
-  const topScorers = data.topScorers
-    .filter((row) => data.teams.find((team) => team.id === row.player.teamId)?.gender === gender)
+  const standingsByCompetition = standingsByCompetitionForGender(data, gender)
+  const standingsEntry = competitionId
+    ? standingsByCompetition.find((entry) => entry.competition.id === competitionId)
+    : standingsByCompetition.find((entry) => entry.completed > 0) ?? standingsByCompetition[0]
+  const standings = standingsEntry?.rows ?? []
+  const topScorers = data.players
+    .filter((player) => data.teamById.get(player.teamId)?.gender === gender)
+    .map((player) => {
+      const teamMatches = recent.filter(
+        (match) => match.homeTeamId === player.teamId || match.awayTeamId === player.teamId,
+      )
+      const perGame = teamMatches.map((match) =>
+        playerGameStats(data, match, player.id, player.teamId),
+      )
+      return { player, totals: aggregate(perGame) }
+    })
+    .filter((row) => row.totals.games > 0)
+    .sort((a, b) => b.totals.ppg - a.totals.ppg)
     .slice(0, 5)
 
   const liveScore = liveMatch ? scoreOf(data, liveMatch) : null
@@ -139,15 +169,21 @@ function HomeContent({
             </p>
 
             <div className="mt-6 flex flex-wrap items-center gap-2">
+              <PublicCompetitionFilter
+                competitions={competitions}
+                value={competitionId}
+                onChange={setCompetitionId}
+                className="border-white/20 bg-black/35 text-white"
+              />
               <PublicTeamSwitch gender={gender} onChange={setGender} className="border-white/20 bg-black/35" />
               <Button asChild size="sm" variant="secondary">
-                <Link to="/live">
+                <Link to={href('/live')}>
                   <Radio className="h-4 w-4" aria-hidden="true" />
                   Follow live
                 </Link>
               </Button>
               <Button asChild size="sm">
-                <Link to="/teams">
+                <Link to={href('/teams')}>
                   Explore the teams
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
@@ -190,7 +226,7 @@ function HomeContent({
                     <MapPin className="h-3 w-3" aria-hidden="true" />
                     {liveMatch.venue}
                   </span>
-                  <Link to="/live" className="shrink-0 font-semibold text-[rgb(var(--color-jersey-cyan))] hover:underline">
+                  <Link to={href('/live')} className="shrink-0 font-semibold text-[rgb(var(--color-jersey-cyan))] hover:underline">
                     Open scoreboard
                   </Link>
                 </div>
@@ -212,7 +248,7 @@ function HomeContent({
                   <FixtureRow match={upcoming[0]} data={data} ownTeamId={ownTeam.id} />
                 </div>
                 <Button asChild variant="secondary" size="sm" className="mt-3 w-full">
-                    <Link to="/fixtures">All fixtures</Link>
+                    <Link to={href('/fixtures')}>All fixtures</Link>
                 </Button>
               </div>
             ) : (
@@ -221,7 +257,7 @@ function HomeContent({
                   <p className="mt-3 text-sm font-semibold text-white">No game in progress</p>
                   <p className="mt-1 text-xs text-white/65">Check the fixtures page for the next tip-off.</p>
                   <Button asChild variant="secondary" size="sm" className="mt-3">
-                    <Link to="/fixtures">View fixtures</Link>
+                    <Link to={href('/fixtures')}>View fixtures</Link>
                   </Button>
               </div>
             )}
@@ -237,7 +273,7 @@ function HomeContent({
               <p className="mt-0.5 text-xs text-ink-muted">{genderLabel(gender)} team</p>
             </div>
             <Button asChild variant="ghost" size="sm">
-              <Link to="/fixtures">
+              <Link to={href('/fixtures')}>
                 All
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               </Link>
@@ -263,7 +299,7 @@ function HomeContent({
               <p className="mt-0.5 text-xs text-ink-muted">{genderLabel(gender)} team</p>
             </div>
             <Button asChild variant="ghost" size="sm">
-              <Link to="/results">
+              <Link to={href('/results')}>
                 All
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               </Link>
@@ -319,10 +355,12 @@ function HomeContent({
           <CardHeader>
             <div>
               <CardTitle>Standings</CardTitle>
-              <p className="mt-0.5 text-xs text-ink-muted">{genderLabel(gender)} competition</p>
+              <p className="mt-0.5 text-xs text-ink-muted">
+                {genderLabel(gender)} · {standingsEntry?.competition.shortName ?? 'No tournament'}
+              </p>
             </div>
             <Button asChild variant="ghost" size="sm">
-              <Link to="/standings">
+              <Link to={href('/standings')}>
                 Full table
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               </Link>
@@ -363,7 +401,7 @@ function HomeContent({
               <p className="mt-0.5 text-xs text-ink-muted">{genderLabel(gender)} · points per game</p>
             </div>
             <Button asChild variant="ghost" size="sm">
-              <Link to="/players">
+              <Link to={href('/players')}>
                 All players
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               </Link>
@@ -418,15 +456,16 @@ function HomeContent({
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
+          { to: '/schedule', icon: CalendarClock, title: 'Schedule', detail: 'Broadcast timetable with courts and tip-offs' },
           { to: '/teams', icon: Users, title: 'Teams', detail: 'Squads, coaches and season records' },
           { to: '/players', icon: TrendingUp, title: 'Player stats', detail: 'Published scoring and shooting leaders' },
           { to: '/standings', icon: Trophy, title: 'Standings', detail: 'Live competition table' },
         ].map((item) => (
           <Link
             key={item.to}
-            to={item.to}
+            to={href(item.to)}
             className="group rounded-card border border-line bg-surface p-4 transition hover:border-accent/40"
           >
             <item.icon className="h-5 w-5 text-accent" aria-hidden="true" />

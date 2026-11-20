@@ -4,8 +4,8 @@
  * Usage:
  *   npx tsx scripts/seed-firebase.ts
  *
- * Reads .env.local. Admin and staff credentials come from SEED_* variables so
- * no password is ever committed to the repository.
+ * Reads the encrypted local env store. Admin and staff credentials come from
+ * SEED_* variables so no password is ever committed to the repository.
  *
  *   SEED_ADMIN_EMAIL           admin login email
  *   SEED_ADMIN_PASSWORD        admin login password
@@ -14,8 +14,6 @@
  * Only supplied data is written: squads, staff, teams, competition shells and
  * registrations and supplied event fixtures. No scores, statistics or media are invented.
  */
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { getApp, getApps, initializeApp } from 'firebase/app'
 import {
   createUserWithEmailAndPassword,
@@ -36,13 +34,9 @@ import {
   staffAccounts,
 } from '../src/data/bootstrap'
 import type { Player, PublicPlayer, User } from '../src/types/domain'
+import { loadSecureEnv } from './lib/secure-env.mjs'
 
-const envPath = fileURLToPath(new URL('../.env.local', import.meta.url))
-const env: Record<string, string> = {}
-for (const line of readFileSync(envPath, 'utf8').split(/\r?\n/)) {
-  const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/)
-  if (match) env[match[1]] = match[2].replace(/^["']|["']$/g, '')
-}
+const env = loadSecureEnv()
 
 const required = [
   'VITE_FIREBASE_API_KEY',
@@ -51,10 +45,11 @@ const required = [
   'VITE_FIREBASE_APP_ID',
   'SEED_ADMIN_EMAIL',
   'SEED_ADMIN_PASSWORD',
+  'SEED_STAFF_TEMP_PASSWORD',
 ]
 const missing = required.filter((key) => !env[key])
 if (missing.length > 0) {
-  console.error(`Missing environment variables in .env.local: ${missing.join(', ')}`)
+  console.error(`Missing environment variables: ${missing.join(', ')}`)
   process.exit(1)
 }
 
@@ -72,7 +67,7 @@ const secondary = initializeApp(firebaseConfig, 'dws-seed-secondary')
 const secondaryAuth = getAuth(secondary)
 const auth = getAuth(app)
 const db = getFirestore(app)
-const staffTempPassword = env.SEED_STAFF_TEMP_PASSWORD || 'Wolves2026!'
+const staffTempPassword = env.SEED_STAFF_TEMP_PASSWORD
 
 async function ensureAccount(email: string, password: string): Promise<string> {
   try {

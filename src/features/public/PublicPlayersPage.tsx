@@ -10,7 +10,17 @@ import { Table, TableWrap, TBody, TD, TH, THead, TR } from '@/components/ui/tabl
 import { Badge } from '@/components/ui/badge'
 import { PublicGate } from '@/features/public/PublicGate'
 import { PublicTeamSwitch, usePublicGender } from '@/features/public/PublicTeamSwitch'
-import { genderLabel, matchesForGender, playerGameStats } from '@/features/public/publicUtils'
+import {
+  PublicCompetitionFilter,
+  usePublicCompetitionFilter,
+  usePublicHref,
+} from '@/features/public/PublicCompetitionFilter'
+import {
+  filterByCompetition,
+  genderLabel,
+  matchesForGender,
+  playerGameStats,
+} from '@/features/public/publicUtils'
 import { aggregate } from '@/services/analytics/stats'
 import type { PublicData } from '@/features/public/usePublicData'
 import type { TeamGender } from '@/types/domain'
@@ -28,12 +38,17 @@ function PlayersContent({
   setGender: (gender: TeamGender) => void
 }) {
   const [sort, setSort] = useState<SortKey>('ppg')
+  const href = usePublicHref()
+  const { competitions, competitionId, selectedCompetition, setCompetitionId } =
+    usePublicCompetitionFilter(data, gender)
 
   const rows = useMemo(() => {
     const teamIds = new Set(
       data.teams.filter((team) => team.gender === gender).map((team) => team.id),
     )
-    const completed = matchesForGender(data, gender).filter((match) => match.status === 'completed')
+    const completed = filterByCompetition(matchesForGender(data, gender), competitionId).filter(
+      (match) => match.status === 'completed',
+    )
 
     return data.players
       .filter((player) => player.publicVisible && player.isActive && teamIds.has(player.teamId))
@@ -52,7 +67,7 @@ function PlayersContent({
         if (sort === 'fgPct') return b.totals.fgPct - a.totals.fgPct
         return b.totals[sort] - a.totals[sort]
       })
-  }, [data, gender, sort])
+  }, [data, gender, competitionId, sort])
 
   const leaders = rows.slice(0, 3)
 
@@ -61,8 +76,19 @@ function PlayersContent({
       <PageHeader
         eyebrow="Player statistics"
         title={`${genderLabel(gender)} player stats`}
-        description="Published season statistics derived from recorded match events. Private player details are never shown."
-        actions={<PublicTeamSwitch gender={gender} onChange={setGender} />}
+        description={`Published statistics from ${
+          selectedCompetition ? selectedCompetition.name : 'all tournaments'
+        }, derived from recorded match events. Private player details are never shown.`}
+        actions={
+          <>
+            <PublicCompetitionFilter
+              competitions={competitions}
+              value={competitionId}
+              onChange={setCompetitionId}
+            />
+            <PublicTeamSwitch gender={gender} onChange={setGender} />
+          </>
+        }
       />
 
       {leaders.length > 0 ? (
@@ -71,7 +97,7 @@ function PlayersContent({
             <Card key={row.player.id}>
               <CardContent className="pt-4">
                 <Link
-                  to={`/players/${row.player.id}`}
+                  to={href(`/players/${row.player.id}`)}
                   className="flex items-center gap-3 transition hover:text-accent"
                 >
                   <PlayerAvatar player={row.player} size="lg" />
@@ -151,7 +177,7 @@ function PlayersContent({
                   <TD className="stat-num text-center text-ink-faint">{index + 1}</TD>
                   <TD>
                     <Link
-                      to={`/players/${row.player.id}`}
+                      to={href(`/players/${row.player.id}`)}
                       className="flex items-center gap-2 transition hover:text-accent"
                     >
                       <PlayerAvatar player={row.player} size="sm" />

@@ -43,6 +43,7 @@ const AUDIT_KEY = 'dws.mock.audit.v1'
 const REGISTRATIONS_KEY = 'dws.mock.registrations.v1'
 const NOTIFICATIONS_KEY = 'dws.mock.notifications.v1'
 const SNAPSHOTS_KEY = 'dws.mock.snapshots.v1'
+const ROSTER_STARTERS_KEY = 'dws.mock.rosterStarters.v1'
 
 const delay = (ms = 90) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
@@ -84,6 +85,10 @@ let notifications: AppNotification[] = storedNotifications
   ? copy(storedNotifications)
   : copy(seedNotifications)
 let snapshots: MatchSnapshot[] = readJson<MatchSnapshot[]>(SNAPSHOTS_KEY, [])
+let rosterStarters: Record<string, string[]> = readJson<Record<string, string[]>>(
+  ROSTER_STARTERS_KEY,
+  {},
+)
 
 function persistPlayers(): void {
   writeJson(PLAYERS_KEY, players)
@@ -131,6 +136,8 @@ function buildLiveRoster(matchId: string, teamId: string): MatchRoster[] {
   )
   if (!match || match.status === 'completed') return base
 
+  const chosen = rosterStarters[`${matchId}_${teamId}`]
+  const chosenIds = new Set(chosen ?? [])
   const squad = players.filter(
     (player) =>
       player.teamId === teamId &&
@@ -145,7 +152,9 @@ function buildLiveRoster(matchId: string, teamId: string): MatchRoster[] {
       teamId,
       playerId: player.id,
       jerseyNumber: player.jerseyNumber,
-      isStarter: existing?.isStarter ?? index < 5,
+      isStarter: chosen
+        ? chosenIds.has(player.id)
+        : (existing?.isStarter ?? index < 5),
       isActive: player.availability === 'active',
     }
   })
@@ -400,6 +409,16 @@ export const mockRepositories: Repositories = {
     },
     async listByMatchAndTeam(matchId: string, teamId: string) {
       await delay()
+      return copy(buildLiveRoster(matchId, teamId))
+    },
+    async setStarters(matchId: string, teamId: string, starterPlayerIds: string[]) {
+      await delay()
+      const match = matches.find((entry) => entry.id === matchId)
+      if (!match || match.status === 'completed') {
+        throw new Error('The starting five cannot be changed for this match.')
+      }
+      rosterStarters[`${matchId}_${teamId}`] = [...starterPlayerIds]
+      writeJson(ROSTER_STARTERS_KEY, rosterStarters)
       return copy(buildLiveRoster(matchId, teamId))
     },
   },

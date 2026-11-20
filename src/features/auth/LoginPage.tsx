@@ -10,13 +10,17 @@ import { ChangePasswordForm } from '@/features/auth/ChangePasswordForm'
 import { WolfWatermark } from '@/components/brand/wolf-watermark'
 
 export function LoginPage() {
-  const { user, signIn } = useAuth()
+  const { user, signIn, sendPasswordReset } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [resetMode, setResetMode] = useState(false)
+  const [resetBusy, setResetBusy] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
+  const [resetSent, setResetSent] = useState(false)
 
   const destination =
     (location.state as { from?: string } | null)?.from ?? (user ? homePathForRole(user) : '/')
@@ -34,6 +38,23 @@ export function LoginPage() {
     if (!result.user.mustChangePassword) {
       navigate((location.state as { from?: string } | null)?.from ?? homePathForRole(result.user))
     }
+  }
+
+  const submitReset = async () => {
+    setResetError(null)
+    setResetSent(false)
+    if (!email.trim()) {
+      setResetError('Enter your work email address first.')
+      return
+    }
+    setResetBusy(true)
+    const result = await sendPasswordReset(email)
+    setResetBusy(false)
+    if (!result.ok) {
+      setResetError(result.error ?? 'Could not send a reset link. Please try again.')
+      return
+    }
+    setResetSent(true)
   }
 
   return (
@@ -117,39 +138,98 @@ export function LoginPage() {
             {user?.mustChangePassword ? (
               <ChangePasswordForm onDone={() => navigate(destination)} />
             ) : (
-              <form onSubmit={submit} className="space-y-3">
-                <Field label="Email address" htmlFor="login-email">
-                  <Input
-                    id="login-email"
-                    type="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    placeholder="you@example.com"
-                    autoComplete="username"
-                    required
-                  />
-                </Field>
-                <Field label="Password" htmlFor="login-password">
-                  <Input
-                    id="login-password"
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Your password"
-                    autoComplete="current-password"
-                    required
-                  />
-                </Field>
-                {error ? (
-                  <p className="text-xs text-danger" role="alert">
-                    {error}
-                  </p>
-                ) : null}
-                <Button type="submit" disabled={busy} className="w-full">
-                  <LogIn className="h-4 w-4" aria-hidden="true" />
-                  {busy ? 'Signing in…' : 'Sign in'}
-                </Button>
-              </form>
+              <div className="space-y-3">
+                <form onSubmit={submit} className="space-y-3">
+                  <Field label="Email address" htmlFor="login-email">
+                    <Input
+                      id="login-email"
+                      type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      placeholder="you@example.com"
+                      autoComplete="username"
+                      required
+                    />
+                  </Field>
+                  <Field label="Password" htmlFor="login-password">
+                    <Input
+                      id="login-password"
+                      type="password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="Your password"
+                      autoComplete="current-password"
+                      required
+                    />
+                  </Field>
+                  {error ? (
+                    <p className="text-xs text-danger" role="alert">
+                      {error}
+                    </p>
+                  ) : null}
+                  <Button type="submit" disabled={busy} className="w-full">
+                    <LogIn className="h-4 w-4" aria-hidden="true" />
+                    {busy ? 'Signing in…' : 'Sign in'}
+                  </Button>
+                </form>
+
+                {resetMode ? (
+                  <div className="space-y-2 rounded-card border border-line bg-surface p-3">
+                    <p className="text-xs font-semibold text-ink">Reset your password</p>
+                    <p className="text-[11px] leading-relaxed text-ink-muted">
+                      We&apos;ll email a reset link to your DUT Wolves account address.
+                    </p>
+                    <Field label="Email address" htmlFor="reset-email">
+                      <Input
+                        id="reset-email"
+                        type="email"
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                        placeholder="you@example.com"
+                        autoComplete="username"
+                      />
+                    </Field>
+                    {resetError ? (
+                      <p className="text-[11px] text-danger" role="alert">
+                        {resetError}
+                      </p>
+                    ) : null}
+                    {resetSent ? (
+                      <p className="text-[11px] text-success" role="status">
+                        Reset link sent. Check your inbox and spam folder.
+                      </p>
+                    ) : null}
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" onClick={() => void submitReset()} disabled={resetBusy}>
+                        {resetBusy ? 'Sending…' : 'Send reset link'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setResetMode(false)
+                          setResetError(null)
+                          setResetSent(false)
+                        }}
+                      >
+                        Back to sign in
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResetMode(true)
+                      setResetError(null)
+                      setResetSent(false)
+                    }}
+                    className="text-xs font-semibold text-accent transition hover:underline"
+                  >
+                    Forgot your password?
+                  </button>
+                )}
+              </div>
             )}
           </div>
 

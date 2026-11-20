@@ -1,4 +1,4 @@
-import { loadEnv } from 'vite'
+import { loadSecureEnv } from './lib/secure-env.mjs'
 import { initializeApp, deleteApp } from 'firebase/app'
 import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth'
 import {
@@ -11,7 +11,7 @@ import {
   where,
 } from 'firebase/firestore'
 
-const env = { ...loadEnv('development', process.cwd(), ''), ...process.env }
+const env = loadSecureEnv()
 const email = env.FIREBASE_ADMIN_EMAIL || env.SEED_ADMIN_EMAIL
 const password = env.FIREBASE_ADMIN_PASSWORD || env.SEED_ADMIN_PASSWORD
 if (!email || !password) throw new Error('Admin credentials missing.')

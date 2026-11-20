@@ -207,17 +207,23 @@ still allow the administrator to create the projections, deploy the new
 frontend, and immediately publish the matching rules before resuming use. This
 avoids old clients writing only private source records after the stricter rules
 take effect. The backfill requires `FIREBASE_ADMIN_EMAIL` and
-`FIREBASE_ADMIN_PASSWORD` in the local process environment; do not commit
-credentials. Validate rule changes with `npm run test:firestore-rules` against
+`FIREBASE_ADMIN_PASSWORD` from the encrypted local env store or the local process
+environment; do not commit credentials. Validate rule changes with `npm run test:firestore-rules` against
 the Firebase Auth and Firestore emulators before deployment.
 
 ## 14. Configuration model
 
-The app reads Firebase runtime configuration from Vite environment variables.
+The app reads Firebase runtime configuration from Vite environment variables. Local
+secrets are kept outside the repository in `%LOCALAPPDATA%\dut-wolves-stats\env`,
+encrypted at rest with Windows DPAPI. `scripts/lib/secure-env.mjs` is the single
+loader used by maintenance scripts; `scripts/env-secure.mjs` migrates, locks,
+unlocks and verifies the encrypted file without printing values.
 
 Important implementation detail:
 - Firebase web config is client-safe to initialise the app
 - secret or dangerous credentials must not be placed into Vite public variables
+- `SEED_*` administrator/staff credentials are read only by local scripts and never enter the client bundle
+- production deployments receive configuration from the host environment, not from a repository env file
 - no credentials for the archived media upload workflow are required
 
 ## 15. Deployment shape

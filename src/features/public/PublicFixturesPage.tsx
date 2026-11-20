@@ -7,7 +7,17 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PublicGate } from '@/features/public/PublicGate'
 import { PublicTeamSwitch, usePublicGender } from '@/features/public/PublicTeamSwitch'
-import { genderLabel, matchesForGender } from '@/features/public/publicUtils'
+import {
+  PublicCompetitionFilter,
+  usePublicCompetitionFilter,
+  usePublicHref,
+} from '@/features/public/PublicCompetitionFilter'
+import {
+  displayRound,
+  filterByCompetition,
+  genderLabel,
+  matchesForGender,
+} from '@/features/public/publicUtils'
 import type { PublicData } from '@/features/public/usePublicData'
 import type { Match, TeamGender } from '@/types/domain'
 import { formatDate, formatTime, formatWeekday } from '@/utils/format'
@@ -36,7 +46,10 @@ function FixturesContent({
   gender: TeamGender
   setGender: (gender: TeamGender) => void
 }) {
-  const fixtures = matchesForGender(data, gender)
+  const href = usePublicHref()
+  const { competitions, competitionId, selectedCompetition, setCompetitionId } =
+    usePublicCompetitionFilter(data, gender)
+  const fixtures = filterByCompetition(matchesForGender(data, gender), competitionId)
     .filter((match) => match.status === 'scheduled' || match.status === 'live' || match.status === 'paused')
     .sort((a, b) => a.tipoff.localeCompare(b.tipoff))
   const groups = groupByMonth(fixtures)
@@ -46,18 +59,31 @@ function FixturesContent({
       <PageHeader
         eyebrow="Fixtures"
         title={`${genderLabel(gender)} fixtures`}
-        description="Upcoming and in-progress matches. All times are South African Standard Time."
-        actions={<PublicTeamSwitch gender={gender} onChange={setGender} />}
+        description={`Upcoming and in-progress matches in ${
+          selectedCompetition ? selectedCompetition.name : 'all tournaments'
+        }. All times are South African Standard Time.`}
+        actions={
+          <>
+            <PublicCompetitionFilter
+              competitions={competitions}
+              value={competitionId}
+              onChange={setCompetitionId}
+            />
+            <PublicTeamSwitch gender={gender} onChange={setGender} />
+          </>
+        }
       />
 
       {groups.length === 0 ? (
         <EmptyState
           icon={CalendarDays}
           title="No fixtures scheduled"
-          description={`There are no upcoming ${genderLabel(gender).toLowerCase()} fixtures published yet.`}
+          description={`There are no upcoming ${genderLabel(gender).toLowerCase()} fixtures ${
+            selectedCompetition ? `in ${selectedCompetition.name}` : 'published'
+          } yet.`}
           action={
             <Button asChild variant="secondary">
-              <Link to="/results">View results</Link>
+              <Link to={href('/results')}>View results</Link>
             </Button>
           }
         />
@@ -87,7 +113,9 @@ function FixturesContent({
                         </div>
                         <div>
                           <p className="text-xs font-medium text-ink">{formatTime(match.tipoff)}</p>
-                          <p className="text-[11px] text-ink-faint">{match.round ?? 'Fixture'}</p>
+                          <p className="text-[11px] text-ink-faint">
+                            {displayRound(match.round) ?? 'Fixture'}
+                          </p>
                         </div>
                       </div>
 
@@ -111,11 +139,11 @@ function FixturesContent({
                         </Badge>
                         {isLive ? (
                           <Button asChild size="sm" variant="secondary">
-                            <Link to="/live">Live score</Link>
+                            <Link to={href('/live')}>Live score</Link>
                           </Button>
                         ) : null}
                         <Button asChild size="sm" variant="ghost">
-                          <Link to={`/matches/${match.id}`}>Match centre</Link>
+                          <Link to={href(`/matches/${match.id}`)}>Match centre</Link>
                         </Button>
                       </div>
                     </CardContent>

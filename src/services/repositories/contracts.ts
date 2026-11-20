@@ -79,6 +79,16 @@ export interface MatchRosterRepository {
     teamId: string,
     refreshLiveRoster?: boolean,
   ): Promise<MatchRoster[]>
+  /**
+   * Persist the manager's starting five for one team in one match. Every
+   * eligible squad member is written so stored flags are authoritative on the
+   * next read (see buildRoster), rather than falling back to query order.
+   */
+  setStarters(
+    matchId: string,
+    teamId: string,
+    starterPlayerIds: string[],
+  ): Promise<MatchRoster[]>
 }
 
 export interface MatchEventRepository {

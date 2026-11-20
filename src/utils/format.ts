@@ -1,5 +1,13 @@
+/**
+ * Fixtures are published for a South African audience and tip-off times are
+ * always quoted in South African Standard Time. Pinning the time zone keeps
+ * the schedule consistent for visitors browsing from elsewhere.
+ */
+const SAST = { timeZone: 'Africa/Johannesburg' } as const
+
 export function formatDate(iso: string, options?: Intl.DateTimeFormatOptions): string {
   return new Intl.DateTimeFormat('en-ZA', {
+    ...SAST,
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -8,11 +16,12 @@ export function formatDate(iso: string, options?: Intl.DateTimeFormatOptions): s
 }
 
 export function formatWeekday(iso: string): string {
-  return new Intl.DateTimeFormat('en-ZA', { weekday: 'short' }).format(new Date(iso))
+  return new Intl.DateTimeFormat('en-ZA', { ...SAST, weekday: 'short' }).format(new Date(iso))
 }
 
 export function formatTime(iso: string): string {
   return new Intl.DateTimeFormat('en-ZA', {
+    ...SAST,
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
@@ -21,12 +30,24 @@ export function formatTime(iso: string): string {
 
 export function formatDateTime(iso: string): string {
   return new Intl.DateTimeFormat('en-ZA', {
+    ...SAST,
     day: 'numeric',
     month: 'short',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
+  }).format(new Date(iso))
+}
+
+/** Long form date used by the broadcast schedule. */
+export function formatLongDate(iso: string): string {
+  return new Intl.DateTimeFormat('en-ZA', {
+    ...SAST,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
   }).format(new Date(iso))
 }
 

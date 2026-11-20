@@ -14,6 +14,12 @@ import { PlayerAvatar } from '@/components/stats/player-avatar'
 import { Table, TableWrap, TBody, TD, TH, THead, TR } from '@/components/ui/table'
 import { PublicGate } from '@/features/public/PublicGate'
 import {
+  PublicCompetitionFilter,
+  usePublicCompetitionFilter,
+  usePublicHref,
+} from '@/features/public/PublicCompetitionFilter'
+import {
+  filterByCompetition,
   playerGameStats,
   publicAvailabilityLabel,
   scoreOf,
@@ -31,14 +37,20 @@ const AVAILABILITY_TONE = {
 } as const
 
 function PlayerProfileContent({ data, player }: { data: PublicData; player: PublicPlayer }) {
+  const href = usePublicHref()
+  const { competitions, competitionId, setCompetitionId } = usePublicCompetitionFilter(
+    data,
+    data.teamById.get(player.teamId)?.gender ?? 'men',
+  )
   const team = data.teamById.get(player.teamId) ?? null
-  const matches = data.matches
-    .filter(
+  const matches = filterByCompetition(
+    data.matches.filter(
       (match) =>
         match.status === 'completed' &&
         (match.homeTeamId === player.teamId || match.awayTeamId === player.teamId),
-    )
-    .sort((a, b) => b.tipoff.localeCompare(a.tipoff))
+    ),
+    competitionId,
+  ).sort((a, b) => b.tipoff.localeCompare(a.tipoff))
 
   const gameLog = matches.map((match) => {
     const stats = playerGameStats(data, match, player.id, player.teamId)
@@ -65,19 +77,26 @@ function PlayerProfileContent({ data, player }: { data: PublicData; player: Publ
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Button asChild variant="ghost" size="sm">
-          <Link to="/players">
+          <Link to={href('/players')}>
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
             All players
           </Link>
         </Button>
-        {team ? (
-          <Button asChild variant="secondary" size="sm">
-            <Link to={`/teams/${team.id}`}>
-              <Shield className="h-3.5 w-3.5" aria-hidden="true" />
-              {team.name}
-            </Link>
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <PublicCompetitionFilter
+            competitions={competitions}
+            value={competitionId}
+            onChange={setCompetitionId}
+          />
+          {team ? (
+            <Button asChild variant="secondary" size="sm">
+              <Link to={href(`/teams/${team.id}`)}>
+                <Shield className="h-3.5 w-3.5" aria-hidden="true" />
+                {team.name}
+              </Link>
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <section className="overflow-hidden rounded-card border border-line bg-sidebar">
@@ -274,6 +293,7 @@ function PlayerProfileContent({ data, player }: { data: PublicData; player: Publ
 
 export function PublicPlayerPage() {
   const { playerId } = useParams()
+  const href = usePublicHref()
   return (
     <PublicGate>
       {(data) => {
@@ -286,7 +306,7 @@ export function PublicPlayerPage() {
               description="This profile is not published, or the player is no longer on a public roster."
               action={
                 <Button asChild>
-                  <Link to="/players">Back to player statistics</Link>
+                  <Link to={href('/players')}>Back to player statistics</Link>
                 </Button>
               }
             />

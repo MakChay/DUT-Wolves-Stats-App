@@ -1,41 +1,59 @@
 import { Trophy } from 'lucide-react'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableWrap, TBody, TD, TH, THead, TR } from '@/components/ui/table'
 import { PublicGate } from '@/features/public/PublicGate'
 import { PublicTeamSwitch, usePublicGender } from '@/features/public/PublicTeamSwitch'
-import { genderLabel, standingsForGender } from '@/features/public/publicUtils'
+import {
+  PublicCompetitionFilter,
+  usePublicCompetitionFilter,
+} from '@/features/public/PublicCompetitionFilter'
+import {
+  genderLabel,
+  standingsByCompetitionForGender,
+  type CompetitionStandings,
+} from '@/features/public/publicUtils'
 import type { PublicData } from '@/features/public/usePublicData'
 import type { TeamGender } from '@/types/domain'
 import { signed } from '@/utils/format'
 import { cn } from '@/utils/cn'
 
-function StandingsContent({
+function CompetitionTable({
+  entry,
   data,
   gender,
-  setGender,
 }: {
+  entry: CompetitionStandings
   data: PublicData
   gender: TeamGender
-  setGender: (gender: TeamGender) => void
 }) {
-  const standings = standingsForGender(data, gender)
+  const { competition, rows, completed } = entry
   const dutTeamId = gender === 'men' ? 'team-men' : 'team-women'
 
   return (
-    <div className="space-y-5">
-      <PageHeader
-        eyebrow="Standings"
-        title={`${genderLabel(gender)} standings`}
-        description="Full competition table, calculated from every completed fixture. DUT Wolves are highlighted."
-        actions={<PublicTeamSwitch gender={gender} onChange={setGender} />}
-      />
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-base font-bold text-ink">{competition.name}</h2>
+          <p className="mt-0.5 text-xs text-ink-muted">
+            {genderLabel(gender)} ·{' '}
+            {completed > 0
+              ? `${completed} completed ${completed === 1 ? 'match' : 'matches'}`
+              : 'Awaiting first result'}
+          </p>
+        </div>
+        <Badge tone={completed > 0 ? 'accent' : 'neutral'}>
+          {competition.shortName ?? 'Tournament'}
+        </Badge>
+      </div>
 
-      {standings.length === 0 ? (
+      {rows.length === 0 ? (
         <EmptyState
           icon={Trophy}
-          title="No standings available"
-          description="The table appears after the first completed match."
+          title="No teams in this table"
+          description="The table appears once fixtures have been published for this tournament."
         />
       ) : (
         <>
@@ -55,7 +73,7 @@ function StandingsContent({
                 </tr>
               </THead>
               <TBody>
-                {standings.map((row, index) => {
+                {rows.map((row, index) => {
                   const team = data.teamById.get(row.teamId)
                   const isDut = row.teamId === dutTeamId
                   return (
@@ -85,7 +103,11 @@ function StandingsContent({
                       <TD
                         className={cn(
                           'stat-num text-center',
-                          row.diff > 0 ? 'text-success' : row.diff < 0 ? 'text-danger' : 'text-ink-muted',
+                          row.diff > 0
+                            ? 'text-success'
+                            : row.diff < 0
+                              ? 'text-danger'
+                              : 'text-ink-muted',
                         )}
                       >
                         {signed(row.diff)}
@@ -100,9 +122,9 @@ function StandingsContent({
 
           <div className="grid gap-3 sm:grid-cols-3">
             {[
-              ['Matches played', standings.reduce((total, row) => total + row.played, 0)],
-              ['DUT points scored', Math.max(...standings.map((row) => row.pointsFor))],
-              ['Best differential', Math.max(...standings.map((row) => row.diff))],
+              ['Matches played', rows.reduce((total, row) => total + row.played, 0)],
+              ['Top points scored', Math.max(...rows.map((row) => row.pointsFor))],
+              ['Best differential', Math.max(...rows.map((row) => row.diff))],
             ].map(([label, value]) => (
               <div key={String(label)} className="rounded-card border border-line bg-surface px-4 py-3">
                 <p className="stat-num text-xl text-ink">{Math.round(Number(value))}</p>
@@ -112,9 +134,75 @@ function StandingsContent({
           </div>
 
           <p className="rounded-card border border-line bg-surface/60 px-4 py-3 text-[11px] leading-relaxed text-ink-faint">
-            DUT Wolves results are calculated from match events. Final scores for other tournament games are
-            entered by the administrator. Voided or corrected events update the table on reload.
+            Only matches from <span className="font-semibold text-ink-muted">{competition.name}</span>{' '}
+            are included. DUT Wolves results come from match events; final scores for other teams are
+            entered by an administrator.
           </p>
+        </>
+      )}
+    </div>
+  )
+}
+
+function StandingsContent({
+  data,
+  gender,
+  setGender,
+}: {
+  data: PublicData
+  gender: TeamGender
+  setGender: (gender: TeamGender) => void
+}) {
+  const { competitions, competitionId, setCompetitionId } = usePublicCompetitionFilter(data, gender)
+  const entries = standingsByCompetitionForGender(data, gender).filter(
+    (entry) => !competitionId || entry.competition.id === competitionId,
+  )
+  const selected =
+    entries.find((entry) => entry.competition.id === competitionId) ??
+    entries.find((entry) => entry.completed > 0) ??
+    entries[0]
+
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        eyebrow="Standings"
+        title={`${genderLabel(gender)} standings`}
+        description="Each tournament has its own table. Select a competition to see its standings. DUT Wolves are highlighted."
+        actions={
+          <>
+            <PublicCompetitionFilter
+              competitions={competitions}
+              value={competitionId}
+              onChange={setCompetitionId}
+            />
+            <PublicTeamSwitch gender={gender} onChange={setGender} />
+          </>
+        }
+      />
+
+      {entries.length === 0 ? (
+        <EmptyState
+          icon={Trophy}
+          title="No standings available"
+          description="Tables appear once fixtures have been published for a tournament."
+        />
+      ) : (
+        <>
+          {entries.length > 1 ? (
+            <Tabs value={selected?.competition.id} onValueChange={setCompetitionId}>
+              <TabsList className="flex-wrap">
+                {entries.map((entry) => (
+                  <TabsTrigger key={entry.competition.id} value={entry.competition.id}>
+                    {entry.competition.shortName ?? entry.competition.name}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          ) : null}
+
+          {selected ? (
+            <CompetitionTable entry={selected} data={data} gender={gender} />
+          ) : null}
         </>
       )}
     </div>

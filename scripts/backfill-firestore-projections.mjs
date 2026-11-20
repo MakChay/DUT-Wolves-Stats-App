@@ -1,4 +1,4 @@
-import { loadEnv } from 'vite'
+import { loadSecureEnv } from './lib/secure-env.mjs'
 import { initializeApp, deleteApp } from 'firebase/app'
 import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth'
 import {
@@ -10,7 +10,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 
-const env = { ...loadEnv('development', process.cwd(), ''), ...process.env }
+const env = loadSecureEnv()
 const required = [
   'VITE_FIREBASE_API_KEY',
   'VITE_FIREBASE_AUTH_DOMAIN',

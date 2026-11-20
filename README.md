@@ -51,6 +51,8 @@ Courtside event capture is queued locally and retried when the connection return
 - `src/features/public` — public-facing website pages
 - `src/services` — Firebase, repositories, and app configuration
 - `src/types/domain.ts` — core domain model
+- `scripts/lib/secure-env.mjs` — shared loader for the encrypted local env store
+- `scripts/env-secure.mjs` — migrate, lock, unlock and verify local env files
 - `public/manifest.webmanifest` and `public/sw.js` — PWA installation metadata and static-shell caching
 
 ## Documentation
@@ -63,8 +65,18 @@ Courtside event capture is queued locally and retried when the connection return
 
 ```bash
 npm install
+npm run env:status
 npm run dev
 ```
+
+### Environment configuration
+
+- `npm run env:migrate` moves an existing repository `.env.local` into `%LOCALAPPDATA%\dut-wolves-stats\env`, encrypts it with Windows DPAPI, and leaves an unlocked copy for local development.
+- `npm run dev` unlocks the encrypted file automatically. Use `npm run env:lock` to encrypt it again and remove the plaintext copy, `npm run env:unlock` to restore it, and `npm run env:verify` to confirm decryption without printing values.
+- `.env.example` is the only env file committed. It contains placeholders only. No `.env*` variant is served by the dev server or included in the public bundle.
+- On Vercel, set the `VITE_` variables in Project Settings → Environment Variables. Never put `SEED_*` or other credentials in a `VITE_` variable because Vite embeds those values in the public client bundle.
+- The Firebase web config (`VITE_FIREBASE_*`) is client-safe initialisation data, not an administrator credential.
+- `npm run build` runs `check:public-env`, which fails if a private env value appears in `src`, `public` or `dist`.
 
 ## Production build
 
@@ -75,7 +87,7 @@ npm run build
 ## Firestore access controls
 
 - Run `npm run test:firestore-rules` to start the Firebase Auth/Firestore emulators and verify the rules. The Firebase CLI must be available.
-- For an existing Firebase project, coordinate the projection backfill, frontend, and rules as one maintenance-window cutover. Pause match/report/player edits and close old app sessions; run `npm run backfill:firestore-projections` while the current rules still allow the administrator to write projections; deploy the new frontend, then immediately publish the matching Firestore rules before resuming use. This order avoids old clients writing only the private collections after the rules become strict. The backfill requires an administrator account supplied through `FIREBASE_ADMIN_EMAIL` and `FIREBASE_ADMIN_PASSWORD` in the local process environment; never commit these credentials.
+- For an existing Firebase project, coordinate the projection backfill, frontend, and rules as one maintenance-window cutover. Pause match/report/player edits and close old app sessions; run `npm run backfill:firestore-projections` while the current rules still allow the administrator to write projections; deploy the new frontend, then immediately publish the matching Firestore rules before resuming use. This order avoids old clients writing only the private collections after the rules become strict. The backfill requires an administrator account supplied through `FIREBASE_ADMIN_EMAIL` and `FIREBASE_ADMIN_PASSWORD` in the encrypted local env store or the local process environment; never commit these credentials.
 - The backfill creates sanitized public event records and non-sensitive report-status records. It does not change player or report contents.
 - Publishing new media is disabled. Existing media-manager profiles are legacy-only and should be disabled in Firebase Auth during account cleanup.
 

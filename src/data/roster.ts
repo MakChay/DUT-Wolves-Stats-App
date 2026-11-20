@@ -2,13 +2,15 @@
  * Official DUT Wolves 2026 squad list.
  *
  * Names, student numbers and campuses are exactly as supplied by the team
- * managers. Jersey numbers and positions are intentionally absent: they must be
- * assigned and verified by a team manager before they are shown anywhere.
+ * managers. Jersey numbers and positions are only set once a team manager has
+ * assigned and verified them; unassigned players keep them null.
  *
  * `studentNumber` and `campus` are private internal identifiers. They are never
  * included in public player projections, and residence data is not stored at
  * all.
  */
+import type { PlayerPosition } from '@/types/domain'
+
 export interface RosterPlayerSeed {
   /** Stable, non-identifying identifier. Never derived from a student number. */
   id: string
@@ -17,6 +19,9 @@ export interface RosterPlayerSeed {
   lastName: string
   studentNumber: string
   campus: 'Durban' | 'Midlands'
+  jerseyNumber?: number
+  position?: PlayerPosition
+  secondaryPosition?: PlayerPosition
 }
 
 export const menRoster: RosterPlayerSeed[] = [
@@ -39,26 +44,26 @@ export const menRoster: RosterPlayerSeed[] = [
 ]
 
 export const womenRoster: RosterPlayerSeed[] = [
-  { id: 'women-01', teamId: 'team-women', firstName: 'Fezile', lastName: 'Hlongwa', studentNumber: '22300354', campus: 'Durban' },
-  { id: 'women-02', teamId: 'team-women', firstName: 'Ayajabula Isithandile', lastName: 'Mthethwa', studentNumber: '22383640', campus: 'Durban' },
-  { id: 'women-03', teamId: 'team-women', firstName: 'Siphokazi Rose', lastName: 'Mabutyana', studentNumber: '21930586', campus: 'Durban' },
-  { id: 'women-04', teamId: 'team-women', firstName: 'Nkanyezi Eyethu', lastName: 'Makhubela', studentNumber: '22050815', campus: 'Durban' },
-  { id: 'women-05', teamId: 'team-women', firstName: 'Abongile', lastName: 'Masuku', studentNumber: '22414613', campus: 'Durban' },
+  { id: 'women-01', teamId: 'team-women', firstName: 'Fezile', lastName: 'Hlongwa', studentNumber: '22300354', campus: 'Durban', jerseyNumber: 9, position: 'SG', secondaryPosition: 'PG' },
+  { id: 'women-02', teamId: 'team-women', firstName: 'Ayajabula Isithandile', lastName: 'Mthethwa', studentNumber: '22383640', campus: 'Durban', jerseyNumber: 12, position: 'SF', secondaryPosition: 'SG' },
+  { id: 'women-03', teamId: 'team-women', firstName: 'Siphokazi Rose', lastName: 'Mabutyana', studentNumber: '21930586', campus: 'Durban', jerseyNumber: 14, position: 'PF', secondaryPosition: 'C' },
+  { id: 'women-04', teamId: 'team-women', firstName: 'Nkanyezi Eyethu', lastName: 'Makhubela', studentNumber: '22050815', campus: 'Durban', jerseyNumber: 13, position: 'SF', secondaryPosition: 'PF' },
+  { id: 'women-05', teamId: 'team-women', firstName: 'Abongile', lastName: 'Masuku', studentNumber: '22414613', campus: 'Durban', jerseyNumber: 10, position: 'SF', secondaryPosition: 'PF' },
   { id: 'women-06', teamId: 'team-women', firstName: 'Nokuphiwe', lastName: 'Ntuli', studentNumber: '25046620', campus: 'Durban' },
-  { id: 'women-07', teamId: 'team-women', firstName: 'Luthando', lastName: 'Mchunu', studentNumber: '25001770', campus: 'Midlands' },
-  { id: 'women-08', teamId: 'team-women', firstName: 'Sisanda', lastName: 'Zulu', studentNumber: '25040443', campus: 'Midlands' },
+  { id: 'women-07', teamId: 'team-women', firstName: 'Luthando', lastName: 'Mchunu', studentNumber: '25001770', campus: 'Midlands', jerseyNumber: 6, position: 'SF', secondaryPosition: 'SG' },
+  { id: 'women-08', teamId: 'team-women', firstName: 'Sisanda', lastName: 'Zulu', studentNumber: '25040443', campus: 'Midlands', jerseyNumber: 3, position: 'SG', secondaryPosition: 'PG' },
   { id: 'women-09', teamId: 'team-women', firstName: 'Limnandi', lastName: 'Nombiba', studentNumber: '22485765', campus: 'Midlands' },
   { id: 'women-10', teamId: 'team-women', firstName: 'Sithembele', lastName: 'Ntuli', studentNumber: '22358769', campus: 'Midlands' },
   { id: 'women-11', teamId: 'team-women', firstName: 'Amahle', lastName: 'Ntuli', studentNumber: '22413897', campus: 'Midlands' },
-  { id: 'women-12', teamId: 'team-women', firstName: 'Matshediso', lastName: 'Tsosi', studentNumber: '22230357', campus: 'Durban' },
+  { id: 'women-12', teamId: 'team-women', firstName: 'Matshediso', lastName: 'Tsosi', studentNumber: '22230357', campus: 'Durban', jerseyNumber: 5, position: 'SF', secondaryPosition: 'SG' },
   { id: 'women-13', teamId: 'team-women', firstName: 'Benize', lastName: 'Shayinkomo', studentNumber: '22317761', campus: 'Durban' },
   { id: 'women-14', teamId: 'team-women', firstName: 'Samkelisiwe', lastName: 'Sithole', studentNumber: '22379967', campus: 'Midlands' },
-  { id: 'women-15', teamId: 'team-women', firstName: 'Ziyanda Amahle', lastName: 'Makhafula', studentNumber: '22383920', campus: 'Durban' },
+  { id: 'women-15', teamId: 'team-women', firstName: 'Ziyanda Amahle', lastName: 'Makhafula', studentNumber: '22383920', campus: 'Durban', jerseyNumber: 11, position: 'PG', secondaryPosition: 'SG' },
   { id: 'women-16', teamId: 'team-women', firstName: 'Yondisikelela', lastName: 'Masali', studentNumber: '25050254', campus: 'Midlands' },
   { id: 'women-17', teamId: 'team-women', firstName: 'Akhona', lastName: 'Dzanibe', studentNumber: '22459326', campus: 'Midlands' },
-  { id: 'women-18', teamId: 'team-women', firstName: 'Sinethemba Mbali', lastName: 'Ngcobo', studentNumber: '22433772', campus: 'Durban' },
-  { id: 'women-19', teamId: 'team-women', firstName: 'Prosper', lastName: 'Fapohunda', studentNumber: '25079959', campus: 'Durban' },
-  { id: 'women-20', teamId: 'team-women', firstName: 'Charlene Chay', lastName: 'Makwara', studentNumber: '22321651', campus: 'Durban' },
+  { id: 'women-18', teamId: 'team-women', firstName: 'Sinethemba Mbali', lastName: 'Ngcobo', studentNumber: '22433772', campus: 'Durban', jerseyNumber: 7, position: 'SF', secondaryPosition: 'SG' },
+  { id: 'women-19', teamId: 'team-women', firstName: 'Prosper', lastName: 'Fapohunda', studentNumber: '25079959', campus: 'Durban', jerseyNumber: 15, position: 'C', secondaryPosition: 'PF' },
+  { id: 'women-20', teamId: 'team-women', firstName: 'Charlene Chay', lastName: 'Makwara', studentNumber: '22321651', campus: 'Durban', jerseyNumber: 4, position: 'PG', secondaryPosition: 'SG' },
 ]
 
 export const rosterPlayers: RosterPlayerSeed[] = [...womenRoster, ...menRoster]

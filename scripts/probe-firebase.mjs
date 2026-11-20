@@ -1,7 +1,6 @@
 // Temporary diagnostic: checks whether the configured Firestore project is
 // reachable from this machine and whether the current rules allow reads/writes.
-// It reads .env.local directly so Vite is not required.
-import { readFileSync } from 'node:fs'
+// It uses the shared encrypted env loader so Vite is not required.
 import { initializeApp } from 'firebase/app'
 import {
   collection,
@@ -12,12 +11,9 @@ import {
   serverTimestamp,
   setDoc,
 } from 'firebase/firestore'
+import { loadSecureEnv } from './lib/secure-env.mjs'
 
-const env = {}
-for (const line of readFileSync(new URL('../.env.local', import.meta.url), 'utf8').split(/\r?\n/)) {
-  const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/)
-  if (match) env[match[1]] = match[2].replace(/^["']|["']$/g, '')
-}
+const env = loadSecureEnv()
 
 const app = initializeApp({
   apiKey: env.VITE_FIREBASE_API_KEY,

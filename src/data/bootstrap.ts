@@ -93,14 +93,14 @@ export const opponentTeams: OpponentSeed[] = [
   { id: 'team-guardians-women', name: 'Guardians', shortName: 'Guardians', gender: 'women', primaryColor: '#B5935A' },
   { id: 'team-mut-women', name: 'MUT [F]', shortName: 'MUT W', gender: 'women', primaryColor: '#B5935A' },
   { id: 'team-ukzn-women-emba', name: 'UKZN [F]', shortName: 'UKZN W', gender: 'women', primaryColor: '#2563EB' },
-  { id: 'team-winner-1', name: 'Winner 1', shortName: 'Winner 1', gender: 'men', primaryColor: '#B5935A' },
-  { id: 'team-winner-2', name: 'Winner 2', shortName: 'Winner 2', gender: 'men', primaryColor: '#B5935A' },
-  { id: 'team-winner-3', name: 'Winner 3', shortName: 'Winner 3', gender: 'men', primaryColor: '#B5935A' },
-  { id: 'team-winner-4', name: 'Winner 4', shortName: 'Winner 4', gender: 'men', primaryColor: '#B5935A' },
-  { id: 'team-winner-5', name: 'Winner 5', shortName: 'Winner 5', gender: 'men', primaryColor: '#B5935A' },
-  { id: 'team-winner-6', name: 'Winner 6', shortName: 'Winner 6', gender: 'men', primaryColor: '#B5935A' },
-  { id: 'team-winner-7', name: 'Winner 7', shortName: 'Winner 7', gender: 'men', primaryColor: '#B5935A' },
-  { id: 'team-winner-8', name: 'Winner 8', shortName: 'Winner 8', gender: 'men', primaryColor: '#B5935A' },
+  { id: 'team-winner-1', name: 'Winner of Game 1', shortName: 'Winner G1', gender: 'men', primaryColor: '#B5935A' },
+  { id: 'team-winner-2', name: 'Winner of Game 2', shortName: 'Winner G2', gender: 'men', primaryColor: '#B5935A' },
+  { id: 'team-winner-3', name: 'Winner of Game 3', shortName: 'Winner G3', gender: 'men', primaryColor: '#B5935A' },
+  { id: 'team-winner-4', name: 'Winner of Game 4', shortName: 'Winner G4', gender: 'men', primaryColor: '#B5935A' },
+  { id: 'team-winner-5', name: 'Winner of Game 5', shortName: 'Winner G5', gender: 'women', primaryColor: '#B5935A' },
+  { id: 'team-winner-6', name: 'Winner of Game 6', shortName: 'Winner G6', gender: 'women', primaryColor: '#B5935A' },
+  { id: 'team-winner-7', name: 'Winner of Game 7', shortName: 'Winner G7', gender: 'men', primaryColor: '#B5935A' },
+  { id: 'team-winner-8', name: 'Winner of Game 8', shortName: 'Winner G8', gender: 'men', primaryColor: '#B5935A' },
 ]
 
 /** Basketball squad numbers 4–15. Numbers only, never names. */
@@ -111,9 +111,9 @@ export const dutPlayers: Player[] = rosterPlayers.map((entry) => ({
   teamId: entry.teamId,
   firstName: entry.firstName,
   lastName: entry.lastName,
-  jerseyNumber: null,
-  position: null,
-  secondaryPosition: null,
+  jerseyNumber: entry.jerseyNumber ?? null,
+  position: entry.position ?? null,
+  secondaryPosition: entry.secondaryPosition ?? null,
   availability: 'active',
   studentNumber: entry.studentNumber,
   campus: entry.campus,
@@ -186,33 +186,49 @@ export function opponentTeamRecords(): Team[] {
   }))
 }
 
+/**
+ * EMBA Premier League 2026 Finals — Sunday 22 November, Umlazi Indoor Courts.
+ *
+ * `tipoff` is the single source of truth for the scheduled time (stored in UTC,
+ * displayed in SAST). `round` is only a competition/stage label; embedding the
+ * time there made the public pages render it twice.
+ *
+ * Winner placeholders follow the supplied bracket: Games 1–4 are men's
+ * quarter-finals, Games 5–6 are women's semi-finals, Games 7–8 are men's
+ * semi-finals. Only fixtures involving a DUT squad require a post-match report.
+ */
 export const embaFinalsMatches: Match[] = [
-  ['emba-2026-finals-c1-0900', 'team-men', 'team-mut-men', '2026-11-22T07:00:00.000Z', 'Court 1', '09:00'],
-  ['emba-2026-finals-c2-0900', 'team-umlazi-west-men', 'team-fossils-men', '2026-11-22T07:00:00.000Z', 'Court 2', '09:00'],
-  ['emba-2026-finals-c1-1030', 'team-unizulu-men', 'team-titans-men', '2026-11-22T08:30:00.000Z', 'Court 1', '10:30'],
-  ['emba-2026-finals-c2-1030', 'team-umlazi-blazers-men', 'team-the-clan-men', '2026-11-22T08:30:00.000Z', 'Court 2', '10:30'],
-  ['emba-2026-finals-c1-1200', 'team-guardians-women', 'team-mut-women', '2026-11-22T10:00:00.000Z', 'Court 1', '12:00'],
-  ['emba-2026-finals-c2-1200', 'team-women', 'team-ukzn-women-emba', '2026-11-22T10:00:00.000Z', 'Court 2', '12:00'],
-  ['emba-2026-finals-c1-1330', 'team-winner-1', 'team-winner-2', '2026-11-22T11:30:00.000Z', 'Court 1', '13:30'],
-  ['emba-2026-finals-c2-1330', 'team-winner-3', 'team-winner-4', '2026-11-22T11:30:00.000Z', 'Court 2', '13:30'],
-  ['emba-2026-finals-c1-1500', 'team-winner-5', 'team-winner-6', '2026-11-22T13:00:00.000Z', 'Court 1', '15:00'],
-  ['emba-2026-finals-c1-1630', 'team-winner-7', 'team-winner-8', '2026-11-22T14:30:00.000Z', 'Court 1', '16:30'],
-].map(([id, homeTeamId, awayTeamId, tipoff, court, time]): Match => ({
-  id,
-  competitionId: 'comp-emba-premier-finals-2026',
-  seasonId: 'season-2026',
-  homeTeamId,
-  awayTeamId,
-  venue: `Umlazi Indoor Courts · ${court}`,
-  tipoff,
-  status: 'scheduled',
-  period: 1,
-  clockSeconds: 600,
-  publicVisible: true,
-  round: `Premier League 2026 Finals · ${time}`,
-  reportRequired: true,
-  adminComplete: false,
-}))
+  ['emba-2026-finals-c1-0900', 'team-men', 'team-mut-men', '2026-11-22T07:00:00.000Z', 'Court 1'],
+  ['emba-2026-finals-c2-0900', 'team-umlazi-west-men', 'team-fossils-men', '2026-11-22T07:00:00.000Z', 'Court 2'],
+  ['emba-2026-finals-c1-1030', 'team-unizulu-men', 'team-titans-men', '2026-11-22T08:30:00.000Z', 'Court 1'],
+  ['emba-2026-finals-c2-1030', 'team-umlazi-blazers-men', 'team-the-clan-men', '2026-11-22T08:30:00.000Z', 'Court 2'],
+  ['emba-2026-finals-c1-1200', 'team-guardians-women', 'team-mut-women', '2026-11-22T10:00:00.000Z', 'Court 1'],
+  ['emba-2026-finals-c2-1200', 'team-women', 'team-ukzn-women-emba', '2026-11-22T10:00:00.000Z', 'Court 2'],
+  ['emba-2026-finals-c1-1330', 'team-winner-1', 'team-winner-2', '2026-11-22T11:30:00.000Z', 'Court 1'],
+  ['emba-2026-finals-c2-1330', 'team-winner-3', 'team-winner-4', '2026-11-22T11:30:00.000Z', 'Court 2'],
+  ['emba-2026-finals-c1-1500', 'team-winner-5', 'team-winner-6', '2026-11-22T13:00:00.000Z', 'Court 1'],
+  ['emba-2026-finals-c1-1630', 'team-winner-7', 'team-winner-8', '2026-11-22T14:30:00.000Z', 'Court 1'],
+].map(([id, homeTeamId, awayTeamId, tipoff, court]): Match => {
+  const involvesDut = [...DUT_TEAM_IDS].some(
+    (teamId) => teamId === homeTeamId || teamId === awayTeamId,
+  )
+  return {
+    id,
+    competitionId: 'comp-emba-premier-finals-2026',
+    seasonId: 'season-2026',
+    homeTeamId,
+    awayTeamId,
+    venue: `Umlazi Indoor Courts · ${court}`,
+    tipoff,
+    status: 'scheduled',
+    period: 1,
+    clockSeconds: 600,
+    publicVisible: true,
+    round: 'Premier League 2026 Finals',
+    reportRequired: involvesDut,
+    adminComplete: false,
+  }
+})
 
 export interface StaffAccountSeed {
   key: string

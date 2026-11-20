@@ -9,6 +9,7 @@ import { Scoreboard } from '@/components/stats/scoreboard'
 import { StatusPill } from '@/components/stats/status-pill'
 import { Table, TableWrap, TBody, TD, TH, THead, TR } from '@/components/ui/table'
 import { PublicGate } from '@/features/public/PublicGate'
+import { usePublicHref } from '@/features/public/PublicCompetitionFilter'
 import { playerGameStats, scoreOf } from '@/features/public/publicUtils'
 import type { PublicData } from '@/features/public/usePublicData'
 import { deriveTeamGameStats } from '@/services/analytics/stats'
@@ -34,6 +35,7 @@ function TeamStatsRow({ stats, teamName }: { stats: TeamGameStats; teamName: str
 }
 
 function MatchContent({ data, match }: { data: PublicData; match: Match }) {
+  const href = usePublicHref()
   const home = data.teamById.get(match.homeTeamId)
   const away = data.teamById.get(match.awayTeamId)
   const competition = data.competitionById.get(match.competitionId)
@@ -62,7 +64,7 @@ function MatchContent({ data, match }: { data: PublicData; match: Match }) {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Button asChild variant="ghost" size="sm" className="-ml-2">
-          <Link to={completed ? '/results' : '/fixtures'}>
+          <Link to={href(completed ? '/results' : '/fixtures')}>
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
             {completed ? 'Results' : 'Fixtures'}
           </Link>
@@ -214,6 +216,7 @@ function MatchContent({ data, match }: { data: PublicData; match: Match }) {
 
 export function PublicMatchPage() {
   const { matchId } = useParams()
+  const href = usePublicHref()
   return (
     <PublicGate>
       {(data) => {
@@ -226,7 +229,7 @@ export function PublicMatchPage() {
               description="This match is not published, or the link is no longer valid."
               action={
                 <Button asChild>
-                  <Link to="/fixtures">Back to fixtures</Link>
+                  <Link to={href('/fixtures')}>Back to fixtures</Link>
                 </Button>
               }
             />

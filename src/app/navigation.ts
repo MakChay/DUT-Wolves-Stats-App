@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  CalendarClock,
   CalendarDays,
   ClipboardCheck,
   ClipboardList,
@@ -92,6 +93,7 @@ export const roleAreas: Record<Exclude<UserRole, 'public' | 'media_manager'>, Ro
 export const publicNav: NavItem[] = [
   { label: 'Home', to: '/', icon: LayoutDashboard, end: true },
   { label: 'Live Scores', to: '/live', icon: Radio },
+  { label: 'Schedule', to: '/schedule', icon: CalendarClock },
   { label: 'Fixtures', to: '/fixtures', icon: CalendarDays },
   { label: 'Results', to: '/results', icon: Trophy },
   { label: 'Teams', to: '/teams', icon: Users },

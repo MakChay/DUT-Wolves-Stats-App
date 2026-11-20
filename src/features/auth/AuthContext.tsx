@@ -11,6 +11,7 @@ import {
   EmailAuthProvider,
   onAuthStateChanged,
   reauthenticateWithCredential,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   updatePassword,
@@ -29,6 +30,7 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<SignInResult>
   signOut: () => Promise<void>
   changePassword: (currentPassword: string, newPassword: string) => Promise<SignInResult>
+  sendPasswordReset: (email: string) => Promise<{ ok: boolean; error?: string }>
   refreshProfile: () => Promise<void>
 }
 
@@ -137,14 +139,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user],
   )
 
+  const sendPasswordReset = useCallback(async (email: string) => {
+    if (!firebaseAuth) return { ok: false, error: 'Authentication is unavailable.' }
+    try {
+      await sendPasswordResetEmail(firebaseAuth, email.trim())
+      return { ok: true }
+    } catch (error) {
+      const code =
+        typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : ''
+      if (code === 'auth/user-not-found') {
+        return { ok: false, error: 'No account was found for that email address.' }
+      }
+      return { ok: false, error: authError(error) }
+    }
+  }, [])
+
   const refreshProfile = useCallback(async () => {
     if (!firebaseUser) return
     setUser(await loadProfile(firebaseUser.uid))
   }, [firebaseUser])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, firebaseUser, loading, signIn, signOut, changePassword, refreshProfile }),
-    [user, firebaseUser, loading, signIn, signOut, changePassword, refreshProfile],
+    () => ({
+      user,
+      firebaseUser,
+      loading,
+      signIn,
+      signOut,
+      changePassword,
+      sendPasswordReset,
+      refreshProfile,
+    }),
+    [user, firebaseUser, loading, signIn, signOut, changePassword, sendPasswordReset, refreshProfile],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

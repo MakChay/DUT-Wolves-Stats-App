@@ -237,7 +237,6 @@ export const seedTeams: Team[] = [
     ['team-the-clan-men', 'The Clan', 'The Clan', 'men'],
     ['team-guardians-women', 'Guardians', 'Guardians', 'women'],
     ['team-mut-women', 'MUT [F]', 'MUT W', 'women'],
-    ['team-dut-women-emba', 'DUT [F]', 'DUT W', 'women'],
     ['team-ukzn-women-emba', 'UKZN [F]', 'UKZN W', 'women'],
   ].map(([id, name, shortName, gender]) => ({
     id,
@@ -250,19 +249,19 @@ export const seedTeams: Team[] = [
     publicVisible: true,
   })),
   ...[
-    ['team-winner-1', 'Winner 1'],
-    ['team-winner-2', 'Winner 2'],
-    ['team-winner-3', 'Winner 3'],
-    ['team-winner-4', 'Winner 4'],
-    ['team-winner-5', 'Winner 5'],
-    ['team-winner-6', 'Winner 6'],
-    ['team-winner-7', 'Winner 7'],
-    ['team-winner-8', 'Winner 8'],
-  ].map(([id, name]) => ({
+    ['team-winner-1', 'Winner of Game 1', 'Winner G1', 'men'],
+    ['team-winner-2', 'Winner of Game 2', 'Winner G2', 'men'],
+    ['team-winner-3', 'Winner of Game 3', 'Winner G3', 'men'],
+    ['team-winner-4', 'Winner of Game 4', 'Winner G4', 'men'],
+    ['team-winner-5', 'Winner of Game 5', 'Winner G5', 'women'],
+    ['team-winner-6', 'Winner of Game 6', 'Winner G6', 'women'],
+    ['team-winner-7', 'Winner of Game 7', 'Winner G7', 'men'],
+    ['team-winner-8', 'Winner of Game 8', 'Winner G8', 'men'],
+  ].map(([id, name, shortName, gender]) => ({
     id,
     name,
-    shortName: name,
-    gender: 'men' as const,
+    shortName,
+    gender: gender as Team['gender'],
     managerId: '',
     coachIds: [],
     primaryColor: '#B5935A',
@@ -320,8 +319,8 @@ function buildOpponentPlayers(teamId: string, count = 10): Player[] {
 }
 
 /**
- * DUT squad. Jersey numbers and positions deliberately start unassigned; they
- * are official records that a team manager must set and verify.
+ * DUT squad. Jersey numbers and positions are applied where managers have
+ * verified them; the remaining players stay unassigned until confirmed.
  */
 export const seedPlayers: Player[] = [
   ...rosterPlayers.map<Player>((entry) => ({
@@ -329,9 +328,9 @@ export const seedPlayers: Player[] = [
     teamId: entry.teamId,
     firstName: entry.firstName,
     lastName: entry.lastName,
-    jerseyNumber: null,
-    position: null,
-    secondaryPosition: null,
+    jerseyNumber: entry.jerseyNumber ?? null,
+    position: entry.position ?? null,
+    secondaryPosition: entry.secondaryPosition ?? null,
     availability: 'active',
     studentNumber: entry.studentNumber,
     campus: entry.campus,
@@ -748,7 +747,9 @@ export const seedMatches: Match[] = matchSeeds.map((seed) => ({
   clockSeconds: seed.clockSeconds,
   publicVisible: true,
   round: seed.round,
-  reportRequired: true,
+  reportRequired: [seed.homeTeamId, seed.awayTeamId].some(
+    (teamId) => teamId === 'team-men' || teamId === 'team-women',
+  ),
   adminComplete: seed.status === 'completed' ? seed.id !== PENDING_REPORT_MATCH : false,
   ...(seed.homeScore !== undefined ? { homeScore: seed.homeScore } : {}),
   ...(seed.awayScore !== undefined ? { awayScore: seed.awayScore } : {}),
