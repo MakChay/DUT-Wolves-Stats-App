@@ -5,7 +5,8 @@ export function CoachReportsPage() {
     <ManagerReportsPage
       eyebrow="Coaching reports"
       title="Match reports"
-      description="Read-only box scores and exports. Official event corrections remain with the team manager."
+      description="Read-only box scores and game recaps. Official event corrections remain with the team manager."
+      archivedFilter
     />
   )
 }

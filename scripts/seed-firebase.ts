@@ -4,12 +4,13 @@
  * Usage:
  *   npx tsx scripts/seed-firebase.ts
  *
- * Reads the encrypted local env store. Admin and staff credentials come from
- * SEED_* variables so no password is ever committed to the repository.
+ * Reads the encrypted local env store. Admin credentials always come from
+ * SEED_* variables so no real password is ever committed to the repository.
  *
  *   SEED_ADMIN_EMAIL           admin login email
  *   SEED_ADMIN_PASSWORD        admin login password
  *   SEED_STAFF_TEMP_PASSWORD   one-time password for invited staff accounts
+ *                              (optional locally — see DEV_ONLY_STAFF_PASSWORD)
  *
  * Only supplied data is written: squads, staff, teams, competition shells and
  * registrations and supplied event fixtures. No scores, statistics or media are invented.
@@ -38,6 +39,17 @@ import { loadSecureEnv } from './lib/secure-env.mjs'
 
 const env = loadSecureEnv()
 
+/**
+ * DEV ONLY — a clearly-labelled, non-secret test password for locally seeded
+ * manager/coach accounts. It exists so the seeded staff accounts can be used
+ * to exercise flows such as starting-five selection on a local clone.
+ *
+ * This is NOT a real credential. Never use it against a real deployment, and
+ * never place a real password here. A real SEED_STAFF_TEMP_PASSWORD from the
+ * encrypted local env store always takes precedence over this fallback.
+ */
+const DEV_ONLY_STAFF_PASSWORD = 'DutWolvesDevTest!2026'
+
 const required = [
   'VITE_FIREBASE_API_KEY',
   'VITE_FIREBASE_AUTH_DOMAIN',
@@ -45,7 +57,6 @@ const required = [
   'VITE_FIREBASE_APP_ID',
   'SEED_ADMIN_EMAIL',
   'SEED_ADMIN_PASSWORD',
-  'SEED_STAFF_TEMP_PASSWORD',
 ]
 const missing = required.filter((key) => !env[key])
 if (missing.length > 0) {
@@ -67,7 +78,13 @@ const secondary = initializeApp(firebaseConfig, 'dws-seed-secondary')
 const secondaryAuth = getAuth(secondary)
 const auth = getAuth(app)
 const db = getFirestore(app)
-const staffTempPassword = env.SEED_STAFF_TEMP_PASSWORD
+const staffTempPassword = env.SEED_STAFF_TEMP_PASSWORD || DEV_ONLY_STAFF_PASSWORD
+if (!env.SEED_STAFF_TEMP_PASSWORD) {
+  console.warn(
+    'DEV ONLY: SEED_STAFF_TEMP_PASSWORD is not set in the encrypted env store; ' +
+      'using the local test password for seeded staff accounts. Do not use this in production.',
+  )
+}
 
 async function ensureAccount(email: string, password: string): Promise<string> {
   try {

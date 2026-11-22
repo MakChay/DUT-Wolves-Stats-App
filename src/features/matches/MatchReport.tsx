@@ -6,6 +6,7 @@ import {
   matchScore,
 } from '@/services/analytics/stats'
 import { Scoreboard } from '@/components/stats/scoreboard'
+import { Badge } from '@/components/ui/badge'
 import { Table, TableWrap, TBody, TD, TH, THead, TR } from '@/components/ui/table'
 import { formatDate, formatTime } from '@/utils/format'
 import { isDutTeamId } from '@/types/domain'
@@ -13,6 +14,7 @@ import { isDutTeamId } from '@/types/domain'
 export interface BoxScoreRow {
   player: Player
   stats: ReturnType<typeof derivePlayerGameStats>
+  isStarter: boolean
 }
 
 export function buildBoxScore(
@@ -40,6 +42,7 @@ export function buildBoxScore(
       return {
         player,
         stats: derivePlayerGameStats(events, player.id, teamId, match.id),
+        isStarter: entry.isStarter,
       }
     })
     .filter((row): row is BoxScoreRow => Boolean(row))
@@ -117,6 +120,9 @@ function TeamBoxScore({
                     <span className="font-medium text-ink">
                       {row.player.firstName} {row.player.lastName}
                     </span>
+                    {row.isStarter ? (
+                      <Badge tone="accent" className="ml-1">STARTER</Badge>
+                    ) : null}
                   </span>
                 </TD>
                 <TD className="stat-num text-center text-ink">{row.stats.points}</TD>
@@ -163,6 +169,82 @@ function TeamBoxScore({
   )
 }
 
+function GameRecap({
+  match,
+  homeTeam,
+  awayTeam,
+  homeScore,
+  awayScore,
+}: {
+  match: Match
+  homeTeam: Team
+  awayTeam: Team
+  homeScore: number
+  awayScore: number
+}) {
+  const dutIsHome = isDutTeamId(homeTeam.id)
+  const dutTeam = dutIsHome ? homeTeam : awayTeam
+  const opponent = dutIsHome ? awayTeam : homeTeam
+  const dutScore = dutIsHome ? homeScore : awayScore
+  const oppScore = dutIsHome ? awayScore : homeScore
+
+  const outcome =
+    match.status === 'completed'
+      ? dutScore > oppScore
+        ? 'WIN'
+        : dutScore < oppScore
+          ? 'LOSS'
+          : 'DRAW'
+      : null
+  const tone = outcome === 'WIN' ? 'success' : outcome === 'LOSS' ? 'danger' : 'warning'
+
+  return (
+    <div className="rounded-card border border-line bg-surface p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge tone={outcome ? tone : 'warning'}>{outcome ?? match.status.toUpperCase()}</Badge>
+          <span className="stat-num text-lg font-semibold text-ink">
+            {dutScore} – {oppScore}
+          </span>
+          <span className="text-sm text-ink-muted">
+            {dutTeam.shortName} vs {opponent.name}
+          </span>
+        </div>
+        <span className="text-[11px] text-ink-faint">
+          {match.round ? `${match.round} · ` : ''}
+          {formatDate(match.tipoff)} · {formatTime(match.tipoff)}
+        </span>
+      </div>
+      <p className="mt-2 border-t border-line pt-2 text-[11px] text-ink-faint">
+        {match.venue} · {match.competitionId}
+      </p>
+    </div>
+  )
+}
+
+function StartingFive({ rows }: { rows: BoxScoreRow[] }) {
+  const starters = rows.filter((row) => row.isStarter).slice(0, 5)
+  if (starters.length === 0) return null
+  return (
+    <div className="rounded-card border border-line bg-surface p-4">
+      <p className="label-caps mb-3">Starting five</p>
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        {starters.map((row) => (
+          <div
+            key={row.player.id}
+            className="flex items-center gap-2 rounded-control border border-line/60 bg-canvas/40 px-3 py-2"
+          >
+            <span className="stat-num text-[11px] text-ink-faint">#{row.player.jerseyNumber}</span>
+            <span className="text-xs font-medium text-ink">
+              {row.player.firstName} {row.player.lastName}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function MatchReport({ match, events, rosters, players, homeTeam, awayTeam, compact }: MatchReportProps) {
   const score = matchScore(events, match)
   const dutTeam = isDutTeamId(homeTeam.id) ? homeTeam : awayTeam
@@ -181,6 +263,14 @@ export function MatchReport({ match, events, rosters, players, homeTeam, awayTea
         status={match.status}
         competition={`${match.round ?? 'Match'} · ${formatDate(match.tipoff)} · ${formatTime(match.tipoff)}`}
         compact={compact}
+      />
+
+      <GameRecap
+        match={match}
+        homeTeam={homeTeam}
+        awayTeam={awayTeam}
+        homeScore={score.home}
+        awayScore={score.away}
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -221,6 +311,8 @@ export function MatchReport({ match, events, rosters, players, homeTeam, awayTea
           </p>
         </div>
       </div>
+
+      <StartingFive rows={dutRows} />
 
       <TeamBoxScore team={dutTeam} rows={dutRows} match={match} events={events} />
     </div>

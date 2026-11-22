@@ -10,6 +10,7 @@ import { TrendChart } from '@/components/stats/charts'
 import { PlayerDetailDialog } from '@/features/statistics/PlayerDetailDialog'
 import { useTeamScope } from '@/features/teams/TeamScopeContext'
 import { useTeamAnalytics } from '@/features/statistics/useTeamAnalytics'
+import { ArchivedPlayersToggle, useArchivedPlayers, visiblePlayerRows } from '@/features/statistics/archivedPlayers'
 import { SkeletonCard } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/utils/format'
@@ -28,8 +29,10 @@ export function CoachAnalyticsPage() {
   const [leftId, setLeftId] = useState('')
   const [rightId, setRightId] = useState('')
   const [selected, setSelected] = useState<Player | null>(null)
+  const [showArchived, setShowArchived] = useArchivedPlayers()
 
-  const rows = data?.playerRows ?? []
+  const rows = visiblePlayerRows(data?.playerRows ?? [], showArchived)
+  const hiddenPlayers = (data?.playerRows.length ?? 0) - rows.length
   const left = rows.find((row) => row.player.id === leftId) ?? rows[0] ?? null
   const right =
     rows.find((row) => row.player.id === rightId && row.player.id !== left?.player.id) ??
@@ -117,7 +120,10 @@ export function CoachAnalyticsPage() {
       <PageHeader
         eyebrow="Performance analytics"
         title="Player comparison"
-        description="Compare two players side by side. All values are derived from recorded match events."
+        description={`Compare two selected players side by side. All values are derived from recorded match events.${hiddenPlayers > 0 && !showArchived ? ` ${hiddenPlayers} archived hidden.` : ''}`}
+        actions={
+          <ArchivedPlayersToggle showArchived={showArchived} onChange={setShowArchived} />
+        }
       />
 
       <Card>

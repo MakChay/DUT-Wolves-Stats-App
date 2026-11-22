@@ -8,15 +8,24 @@ import { StatCard } from '@/components/stats/stat-card'
 import { Scoreboard } from '@/components/stats/scoreboard'
 import { BarList, DonutStat, TrendChart } from '@/components/stats/charts'
 import { TeamAnalyticsGate } from '@/features/statistics/TeamAnalyticsGate'
+import {
+  ArchivedPlayersToggle,
+  useArchivedPlayers,
+  visiblePlayerRows,
+} from '@/features/statistics/archivedPlayers'
 import { matchScore } from '@/services/analytics/stats'
 import { formatDate, formatTime } from '@/utils/format'
 
 export function CoachDashboardPage() {
+  const [showArchived, setShowArchived] = useArchivedPlayers()
+
   return (
     <TeamAnalyticsGate>
       {(analytics) => {
-        const { team, record, liveMatch, upcoming, completed, eventsByMatch, opponentById, playerRows, recentForm, teamTotals } =
+        const { team, record, liveMatch, upcoming, completed, eventsByMatch, opponentById, recentForm, teamTotals } =
           analytics
+        const playerRows = visiblePlayerRows(analytics.playerRows, showArchived)
+        const hiddenPlayers = analytics.playerRows.length - playerRows.length
         const liveScores = liveMatch ? matchScore(eventsByMatch.get(liveMatch.id) ?? [], liveMatch) : null
 
         return (
@@ -128,11 +137,17 @@ export function CoachDashboardPage() {
                 <CardHeader>
                   <div>
                     <CardTitle>Player rankings</CardTitle>
-                    <p className="mt-0.5 text-xs text-ink-muted">Season points per game</p>
+                    <p className="mt-0.5 text-xs text-ink-muted">
+                      Season points per game
+                      {hiddenPlayers > 0 && !showArchived ? ` · ${hiddenPlayers} archived hidden` : ''}
+                    </p>
                   </div>
-                  <Button asChild variant="ghost" size="sm">
-                    <Link to="/coach/players">Squad</Link>
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <ArchivedPlayersToggle showArchived={showArchived} onChange={setShowArchived} />
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to="/coach/players">Squad</Link>
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="pt-3">
                   {playerRows.length === 0 ? (

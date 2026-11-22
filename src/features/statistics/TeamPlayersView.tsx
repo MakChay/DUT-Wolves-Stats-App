@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Search } from 'lucide-react'
 import type { Player } from '@/types/domain'
-import type { TeamAnalytics } from '@/features/statistics/useTeamAnalytics'
+import type { PlayerSeasonRow, TeamAnalytics } from '@/features/statistics/useTeamAnalytics'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { PlayerStatsTable } from '@/features/statistics/PlayerStatsTable'
@@ -10,14 +10,22 @@ import { PlayerAvatar } from '@/components/stats/player-avatar'
 
 const POSITIONS = ['PG', 'SG', 'SF', 'PF', 'C']
 
-export function TeamPlayersView({ analytics }: { analytics: TeamAnalytics }) {
+export function TeamPlayersView({
+  analytics,
+  rows = analytics.playerRows,
+  control,
+}: {
+  analytics: TeamAnalytics
+  rows?: PlayerSeasonRow[]
+  control?: ReactNode
+}) {
   const [query, setQuery] = useState('')
   const [position, setPosition] = useState('all')
   const [selected, setSelected] = useState<Player | null>(null)
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase()
-    return analytics.playerRows.filter((row) => {
+    return rows.filter((row) => {
       const matchesPosition = position === 'all' || row.player.position === position
       const matchesQuery =
         !term ||
@@ -25,10 +33,10 @@ export function TeamPlayersView({ analytics }: { analytics: TeamAnalytics }) {
         String(row.player.jerseyNumber).includes(term)
       return matchesPosition && matchesQuery
     })
-  }, [analytics.playerRows, position, query])
+  }, [rows, position, query])
 
   const selectedRow = selected
-    ? analytics.playerRows.find((row) => row.player.id === selected.id) ?? null
+    ? rows.find((row) => row.player.id === selected.id) ?? null
     : null
 
   const games =
@@ -68,10 +76,11 @@ export function TeamPlayersView({ analytics }: { analytics: TeamAnalytics }) {
           ]}
           className="sm:w-44"
         />
+        {control}
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {analytics.playerRows.slice(0, 5).map((row) => (
+        {rows.slice(0, 5).map((row) => (
           <button
             key={row.player.id}
             type="button"

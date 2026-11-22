@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { Player } from '@/types/domain'
 import { derivePlayerGameStats } from '@/services/analytics/stats'
-import type { TeamAnalytics } from '@/features/statistics/useTeamAnalytics'
+import type { PlayerSeasonRow, TeamAnalytics } from '@/features/statistics/useTeamAnalytics'
 import { StatCard } from '@/components/stats/stat-card'
 import { DonutStat } from '@/components/stats/charts'
 import { PlayerStatsTable } from '@/features/statistics/PlayerStatsTable'
@@ -10,9 +10,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableWrap, TBody, TD, TH, THead, TR } from '@/components/ui/table'
 import { formatDate } from '@/utils/format'
 
-export function TeamStatsView({ analytics }: { analytics: TeamAnalytics }) {
+export function TeamStatsView({
+  analytics,
+  playerRows: rows,
+  control,
+}: {
+  analytics: TeamAnalytics
+  playerRows?: PlayerSeasonRow[]
+  control?: ReactNode
+}) {
   const [selected, setSelected] = useState<Player | null>(null)
-  const { teamTotals, playerRows, completed, eventsByMatch, opponentById, record } = analytics
+  const { teamTotals, completed, eventsByMatch, opponentById, record } = analytics
+  const playerRows = rows ?? analytics.playerRows
 
   const selectedRow = selected
     ? playerRows.find((row) => row.player.id === selected.id) ?? null
@@ -128,12 +137,15 @@ export function TeamStatsView({ analytics }: { analytics: TeamAnalytics }) {
       </div>
 
       <div>
-        <div className="mb-2 flex items-end justify-between">
+        <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
           <div>
             <h2 className="text-sm font-semibold text-ink">Player statistics</h2>
             <p className="text-xs text-ink-muted">Tap a player for their season game log.</p>
           </div>
-          <span className="text-[11px] text-ink-faint">{playerRows.length} players</span>
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] text-ink-faint">{playerRows.length} players</span>
+            {control}
+          </div>
         </div>
         <PlayerStatsTable rows={playerRows} onSelect={setSelected} />
       </div>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { AlertTriangle, BarChart3, Download, FileText, Printer, ShieldCheck } from 'lucide-react'
 import type {
   Match,
@@ -24,6 +24,11 @@ import { MatchReport, buildBoxScore, periodScores } from '@/features/matches/Mat
 import { PostMatchReportDialog } from '@/features/reports/PostMatchReportDialog'
 import { reportForTeam } from '@/features/reports/reporting'
 import { useTeamScope } from '@/features/teams/TeamScopeContext'
+import {
+  ArchivedPlayersToggle,
+  isArchivedPlayer,
+  useArchivedPlayers,
+} from '@/features/statistics/archivedPlayers'
 import { matchScore } from '@/services/analytics/stats'
 import { formatDate } from '@/utils/format'
 
@@ -85,15 +90,18 @@ export function ManagerReportsPage({
   eyebrow = 'Reports',
   title = 'Match reports',
   description = 'Printable box scores and CSV exports generated from recorded events. Nothing is recalculated by hand.',
+  archivedFilter = false,
 }: {
   eyebrow?: string
   title?: string
   description?: string
+  /** Coach views hide archived players unless the coach opts in. */
+  archivedFilter?: boolean
 } = {}) {
   const { teamId, loading: scopeLoading } = useTeamScope()
   const { user } = useAuth()
   const [params, setParams] = useSearchParams()
-  const navigate = useNavigate()
+  const [showArchived, setShowArchived] = useArchivedPlayers()
   const [reportOpen, setReportOpen] = useState(false)
   const { data, loading, error, reload } = useAsync<ReportData | null>(
     () => (teamId ? loadReport(teamId) : Promise.resolve(null)),
@@ -102,13 +110,32 @@ export function ManagerReportsPage({
 
   const selectedId = params.get('match') ?? data?.matchId ?? ''
 
+  const archivedIds = useMemo(
+    () => new Set((data?.players ?? []).filter(isArchivedPlayer).map((player) => player.id)),
+    [data],
+  )
+  const visiblePlayers = useMemo(
+    () =>
+      archivedFilter && !showArchived
+        ? (data?.players ?? []).filter((player) => !isArchivedPlayer(player))
+        : (data?.players ?? []),
+    [data, archivedFilter, showArchived],
+  )
+  const visibleRosters = useMemo(
+    () =>
+      archivedFilter && !showArchived
+        ? (data?.rosters ?? []).filter((entry) => !archivedIds.has(entry.playerId))
+        : (data?.rosters ?? []),
+    [data, archivedFilter, showArchived, archivedIds],
+  )
+
   const report = useMemo(() => {
     if (!data || !selectedId) return null
     const match = data.matches.find((entry) => entry.id === selectedId) ?? null
     if (!match) return null
-    const [rosters, events] = [data.rosters.filter((entry) => entry.matchId === match.id), data.events]
-    return { match, rosters, events }
-  }, [data, selectedId])
+    const rosters = visibleRosters.filter((entry) => entry.matchId === match.id)
+    return { match, rosters, events: data.events }
+  }, [data, selectedId, visibleRosters])
 
   if (scopeLoading || loading) {
     return (
@@ -189,7 +216,7 @@ export function ManagerReportsPage({
         'FTM',
         'FTA',
       ])
-      buildBoxScore(report.match, report.events, report.rosters, data.players, sideTeam.id).forEach(
+      buildBoxScore(report.match, report.events, report.rosters, visiblePlayers, sideTeam.id).forEach(
         (row) => {
           rows.push([
             row.player.jerseyNumber ?? '',
@@ -314,13 +341,21 @@ export function ManagerReportsPage({
                   className="w-full"
                 />
               </div>
-              <Button
-                variant="ghost"
-                onClick={() => navigate('/manager/reports', { replace: true })}
-                className="self-start sm:self-auto"
-              >
-                Clear selection
-              </Button>
+              <div className="flex flex-col items-start gap-2 self-start sm:self-auto">
+                {archivedFilter ? (
+                  <ArchivedPlayersToggle showArchived={showArchived} onChange={setShowArchived} />
+                ) : null}
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    const updated = new URLSearchParams(params)
+                    updated.delete('match')
+                    setParams(updated, { replace: true })
+                  }}
+                >
+                  Clear selection
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -461,7 +496,7 @@ export function ManagerReportsPage({
                 match={report.match}
                 events={report.events}
                 rosters={report.rosters}
-                players={data.players}
+                players={visiblePlayers}
                 homeTeam={homeTeam}
                 awayTeam={awayTeam}
               />
