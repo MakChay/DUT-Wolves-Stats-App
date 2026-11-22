@@ -124,22 +124,65 @@ export const dutPlayers: Player[] = rosterPlayers.map((entry) => ({
   registeredCompetitionIds: ['comp-league-2026'],
 }))
 
-export const opponentPlayers: Player[] = opponentTeams.flatMap((team) =>
-  OPPONENT_SQUAD_NUMBERS.map((jerseyNumber) => ({
-    id: `${team.id}-p${jerseyNumber}`,
-    teamId: team.id,
-    firstName: '',
-    lastName: '',
-    numberOnly: true,
-    jerseyNumber,
-    position: null,
-    secondaryPosition: null,
-    availability: 'active' as const,
-    isActive: true,
-    // Number-only opponent registrations are internal, never public profiles.
-    publicVisible: false,
-    archivedAt: null,
-  })),
+/**
+ * Non-DUT teams that have a real, named roster (provided by the tournament).
+ * These are seeded as named players instead of number-only registrations, so the
+ * finals Live Match Centre can record player-level stats for them.
+ */
+export const namedOpponentRosters: Record<string, Array<{ lastName: string; firstName: string; jerseyNumber: number }>> = {
+  'team-umlazi-blazers-men': [
+    { lastName: 'Nzama', firstName: 'K', jerseyNumber: 5 },
+    { lastName: 'Ntshingila', firstName: 'K', jerseyNumber: 15 },
+    { lastName: 'Cebisa', firstName: 'S', jerseyNumber: 32 },
+    { lastName: 'Zulu', firstName: 'T', jerseyNumber: 40 },
+    { lastName: 'Ginid', firstName: 'S', jerseyNumber: 7 },
+    { lastName: 'Majola', firstName: 'D', jerseyNumber: 0 },
+    { lastName: 'Dlalose', firstName: 'P', jerseyNumber: 13 },
+    { lastName: 'Mthembu', firstName: '', jerseyNumber: 6 },
+    { lastName: 'Mbuyisa', firstName: '', jerseyNumber: 10 },
+    { lastName: 'Chiliza', firstName: 'c', jerseyNumber: 4 },
+    { lastName: 'Ndlovu', firstName: 'L', jerseyNumber: 9 },
+    { lastName: 'Dlamini', firstName: 'S', jerseyNumber: 3 },
+  ],
+}
+
+export const opponentPlayers: Player[] = opponentTeams
+  .filter((team) => !(team.id in namedOpponentRosters))
+  .flatMap((team) =>
+    OPPONENT_SQUAD_NUMBERS.map((jerseyNumber) => ({
+      id: `${team.id}-p${jerseyNumber}`,
+      teamId: team.id,
+      firstName: '',
+      lastName: '',
+      numberOnly: true,
+      jerseyNumber,
+      position: null,
+      secondaryPosition: null,
+      availability: 'active' as const,
+      isActive: true,
+      // Number-only opponent registrations are internal, never public profiles.
+      publicVisible: false,
+      archivedAt: null,
+    })),
+  )
+
+export const namedOpponentPlayers: Player[] = Object.entries(namedOpponentRosters).flatMap(
+  ([teamId, roster]) =>
+    roster.map((entry) => ({
+      id: `${teamId}-p${entry.jerseyNumber}`,
+      teamId,
+      firstName: entry.firstName,
+      lastName: entry.lastName,
+      numberOnly: false,
+      jerseyNumber: entry.jerseyNumber,
+      position: null,
+      secondaryPosition: null,
+      availability: 'active' as const,
+      isActive: true,
+      // Named opponent players are internal to the Live Match Centre, never public profiles.
+      publicVisible: false,
+      archivedAt: null,
+    })),
 )
 
 export function dutTeams(staffUid: Record<string, string>): Team[] {

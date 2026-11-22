@@ -31,6 +31,7 @@ import {
   dutRegistrations,
   dutTeams,
   opponentPlayers,
+  namedOpponentPlayers,
   opponentTeamRecords,
   staffAccounts,
 } from '../src/data/bootstrap'
@@ -175,7 +176,7 @@ for (const user of userDocs) add('users', user)
 for (const season of bootstrapSeasons) add('seasons', season)
 for (const competition of bootstrapCompetitions) add('competitions', competition)
 for (const team of [...dutTeams(staffUid), ...opponentTeamRecords()]) add('teams', team)
-for (const player of [...dutPlayers, ...opponentPlayers]) add('players', player)
+for (const player of [...dutPlayers, ...opponentPlayers, ...namedOpponentPlayers]) add('players', player)
 for (const player of dutPlayers) add('publicPlayers', publicProjection(player))
 for (const registration of dutRegistrations(staffUid)) add('registrations', registration)
 for (const match of embaFinalsMatches) add('matches', match)

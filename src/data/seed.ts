@@ -343,8 +343,33 @@ export const seedPlayers: Player[] = [
     updatedAt: iso('2026-09-01T08:00:00+02:00'),
   })),
   ...seedTeams
-    .filter((team) => team.id !== 'team-men' && team.id !== 'team-women')
+    .filter((team) => team.id !== 'team-men' && team.id !== 'team-women' && team.id !== 'team-umlazi-blazers-men')
     .flatMap((team) => buildOpponentPlayers(team.id)),
+  ...[
+    { last: 'Nzama', first: 'K', jersey: 5 },
+    { last: 'Ntshingila', first: 'K', jersey: 15 },
+    { last: 'Cebisa', first: 'S', jersey: 32 },
+    { last: 'Zulu', first: 'T', jersey: 40 },
+    { last: 'Ginid', first: 'S', jersey: 7 },
+    { last: 'Majola', first: 'D', jersey: 0 },
+    { last: 'Dlalose', first: 'P', jersey: 13 },
+    { last: 'Mthembu', first: '', jersey: 6 },
+    { last: 'Mbuyisa', first: '', jersey: 10 },
+    { last: 'Chiliza', first: 'c', jersey: 4 },
+    { last: 'Ndlovu', first: 'L', jersey: 9 },
+    { last: 'Dlamini', first: 'S', jersey: 3 },
+  ].map((entry) => ({
+    id: `team-umlazi-blazers-men-p${entry.jersey}`,
+    teamId: 'team-umlazi-blazers-men',
+    firstName: entry.first,
+    lastName: entry.last,
+    jerseyNumber: entry.jersey,
+    position: null,
+    availability: 'active' as const,
+    isActive: true,
+    publicVisible: false,
+    registeredCompetitionIds: [],
+  })),
 ]
 
 export const seedUsers: User[] = [
