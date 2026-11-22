@@ -31,6 +31,7 @@ interface FixtureForm {
   tipoff: string
   round: string
   publicVisible: boolean
+  finalsStatsEnabled: boolean
 }
 
 const EMPTY_FORM: FixtureForm = {
@@ -42,6 +43,7 @@ const EMPTY_FORM: FixtureForm = {
   tipoff: '',
   round: '',
   publicVisible: true,
+  finalsStatsEnabled: false,
 }
 
 function toLocalInput(iso: string): string {
@@ -130,6 +132,7 @@ export function AdminMatchesPage() {
       tipoff: toLocalInput(match.tipoff),
       round: match.round ?? '',
       publicVisible: match.publicVisible,
+      finalsStatsEnabled: match.finalsStatsEnabled ?? false,
     })
     setFormError(null)
   }
@@ -179,6 +182,7 @@ export function AdminMatchesPage() {
           publicVisible: form.publicVisible,
           round: form.round.trim() || undefined,
           reportRequired,
+          finalsStatsEnabled: form.finalsStatsEnabled,
           adminComplete: false,
           isDraft: false,
         }
@@ -203,6 +207,7 @@ export function AdminMatchesPage() {
           publicVisible: form.publicVisible,
           round: form.round.trim() || undefined,
           reportRequired,
+          finalsStatsEnabled: form.finalsStatsEnabled,
         })
         if (!updated) throw new Error('The fixture could not be found.')
         await recordAudit({
@@ -686,6 +691,15 @@ export function AdminMatchesPage() {
                 />
                 Publish on the public schedule
               </label>
+              <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-ink-muted">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-[rgb(var(--color-accent))]"
+                  checked={form.finalsStatsEnabled}
+                  onChange={(event) => setForm({ ...form, finalsStatsEnabled: event.target.checked })}
+                />
+                Enable finals live stats (admin only)
+              </label>
               {formError ? (
                 <p className="sm:col-span-2 text-xs text-danger" role="alert">{formError}</p>
               ) : null}
@@ -917,3 +931,4 @@ export function AdminMatchesPage() {
     </div>
   )
 }
+
