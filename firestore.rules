@@ -23,6 +23,10 @@ service cloud.firestore {
       return teamId in ['team-men', 'team-women'];
     }
 
+    function isFinalsMatch(matchData) {
+      return matchData.finalsStatsEnabled == true;
+    }
+
     function managesTeam(teamId) {
       return isDutTeam(teamId)
         && isManager()
@@ -49,7 +53,10 @@ service cloud.firestore {
     }
 
     function canManageMatch(matchData) {
-      return (isDutTeam(matchData.homeTeamId) || isDutTeam(matchData.awayTeamId))
+      return (
+        isAdmin() && isFinalsMatch(matchData)
+      ) || (
+        (isDutTeam(matchData.homeTeamId) || isDutTeam(matchData.awayTeamId))
         && (
           isAdmin()
           || (
@@ -60,30 +67,39 @@ service cloud.firestore {
               || (isDutTeam(matchData.awayTeamId) && matchData.awayTeamId in profile().teamIds)
             )
           )
+        )
       );
     }
 
     function canReadPrivateMatchEvents(matchId) {
       let matchData = get(/databases/$(database)/documents/matches/$(matchId)).data;
-      return (isDutTeam(matchData.homeTeamId) || isDutTeam(matchData.awayTeamId))
-        && (
-          isAdmin()
-          || (
-            signedIn()
-            && profile().role in ['manager', 'coach']
-            && (
-              isTeamMember(matchData.homeTeamId)
-              || isTeamMember(matchData.awayTeamId)
+      return isAdmin() && isFinalsMatch(matchData)
+        || (
+          (isDutTeam(matchData.homeTeamId) || isDutTeam(matchData.awayTeamId))
+          && (
+            isAdmin()
+            || (
+              signedIn()
+              && profile().role in ['manager', 'coach']
+              && (
+                isTeamMember(matchData.homeTeamId)
+                || isTeamMember(matchData.awayTeamId)
+              )
             )
           )
-      );
+        );
     }
 
     function canManageRoster(rosterData) {
       let matchData = get(/databases/$(database)/documents/matches/$(rosterData.matchId)).data;
-      return managesTeam(rosterData.teamId)
+      return (
+        isAdmin() && isFinalsMatch(matchData)
+        && rosterData.teamId in [matchData.homeTeamId, matchData.awayTeamId]
+      ) || (
+        managesTeam(rosterData.teamId)
         && canManageMatch(matchData)
-        && rosterData.teamId in [matchData.homeTeamId, matchData.awayTeamId];
+        && rosterData.teamId in [matchData.homeTeamId, matchData.awayTeamId]
+      );
     }
 
     function canManageMatchEvent(eventData) {
@@ -92,6 +108,7 @@ service cloud.firestore {
         && eventData.teamId in [matchData.homeTeamId, matchData.awayTeamId]
         && (
           isDutTeam(eventData.teamId)
+          || isAdmin() && isFinalsMatch(matchData)
           || (
             eventData.type == 'TEAM_SCORE'
             && !('playerId' in eventData)
@@ -102,27 +119,34 @@ service cloud.firestore {
 
     function canReadMatchRoster(matchId, teamId) {
       let matchData = get(/databases/$(database)/documents/matches/$(matchId)).data;
-      return isDutTeam(teamId)
+      return (
+        isAdmin() && isFinalsMatch(matchData) && teamId in [matchData.homeTeamId, matchData.awayTeamId]
+      ) || (
+        isDutTeam(teamId)
         && (
           isAdmin()
           || isTeamMember(matchData.homeTeamId)
           || isTeamMember(matchData.awayTeamId)
-        );
+        )
+      );
     }
 
     function canReadPlayer(playerId, playerData) {
-      return isDutTeam(playerData.teamId)
-        && (
-          isAdmin()
-          || (
-            signedIn()
-            && profile().role in ['manager', 'coach']
-            && playerData.teamId in profile().teamIds
-          )
-          || (
-            signedIn()
-            && profile().role == 'player'
-            && profile().playerId == playerId
+      return isAdmin()
+        || (
+          isDutTeam(playerData.teamId)
+          && (
+            isAdmin()
+            || (
+              signedIn()
+              && profile().role in ['manager', 'coach']
+              && playerData.teamId in profile().teamIds
+            )
+            || (
+              signedIn()
+              && profile().role == 'player'
+              && profile().playerId == playerId
+            )
           )
         );
     }

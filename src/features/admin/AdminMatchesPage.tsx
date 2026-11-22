@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { CalendarDays, Pencil, Plus, Trash2 } from 'lucide-react'
 import type { Match, MatchSnapshot } from '@/types/domain'
 import { isDutTeamId } from '@/types/domain'
@@ -556,6 +557,11 @@ export function AdminMatchesPage() {
                     <TD className="max-w-[220px] truncate">{match.venue}</TD>
                     <TD>
                       <div className="flex items-center gap-1">
+                        {match.finalsStatsEnabled ? (
+                          <Button asChild variant="secondary" size="sm">
+                            <Link to={`/admin/match/${match.id}`}>Record stats</Link>
+                          </Button>
+                        ) : null}
                         {!isDut ? (
                           <Button variant="secondary" size="sm" onClick={() => openScore(match)}>
                             {typeof match.homeScore === 'number' ? 'Edit score' : 'Enter score'}

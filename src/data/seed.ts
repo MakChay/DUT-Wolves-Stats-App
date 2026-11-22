@@ -754,6 +754,9 @@ export const seedMatches: Match[] = matchSeeds.map((seed) => ({
   adminComplete: seed.status === 'completed' ? seed.id !== PENDING_REPORT_MATCH : false,
   ...(seed.homeScore !== undefined ? { homeScore: seed.homeScore } : {}),
   ...(seed.awayScore !== undefined ? { awayScore: seed.awayScore } : {}),
+  ...(['emba-2026-finals-c1-1500', 'emba-2026-finals-c1-1630'].includes(seed.id)
+    ? { finalsStatsEnabled: true }
+    : {}),
 }))
 
 function buildRoster(match: Match, teamId: string, rotationOffset: number): MatchRoster[] {

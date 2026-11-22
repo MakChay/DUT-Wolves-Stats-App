@@ -227,6 +227,7 @@ export const embaFinalsMatches: Match[] = [
     round: 'Premier League 2026 Finals',
     reportRequired: involvesDut,
     adminComplete: false,
+    finalsStatsEnabled: id === 'emba-2026-finals-c1-1500' || id === 'emba-2026-finals-c1-1630',
   }
 })
 

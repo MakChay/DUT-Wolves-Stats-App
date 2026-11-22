@@ -148,6 +148,7 @@ export default function App() {
         <Route path="users" element={<AdminUsersPage />} />
         <Route path="competitions" element={<AdminCompetitionsPage />} />
         <Route path="matches" element={<AdminMatchesPage />} />
+        <Route path="match/:matchId" element={<LiveMatchPage />} />
         <Route path="audit" element={<AdminAuditPage />} />
       </Route>
 

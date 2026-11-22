@@ -220,6 +220,12 @@ export interface Match {
   /** Imported draft fixtures stay hidden from public listings until reviewed. */
   isDraft?: boolean
   /**
+   * Finals-only: allow the system admin to record player-level stats for both
+   * teams (including non-DUT finalists) in the Live Match Centre. Never enabled
+   * for regular matches.
+   */
+  finalsStatsEnabled?: boolean
+  /**
    * Explicit final score for fixtures that do not involve a DUT squad. DUT
    * matches derive their score from the event stream instead.
    */

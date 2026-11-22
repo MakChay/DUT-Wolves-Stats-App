@@ -75,11 +75,14 @@ async function loadMatch(
   const match = await repositories.matches.getById(matchId)
   if (!match) return null
   const dutTeamIds = [match.homeTeamId, match.awayTeamId].filter(isDutTeamId)
-  const readTeamIds = isAdmin
-    ? dutTeamIds
-    : teamId && dutTeamIds.includes(teamId)
-      ? [teamId]
-      : []
+  const finalsEnabled = match.finalsStatsEnabled === true
+  const readTeamIds = isAdmin && finalsEnabled
+    ? [match.homeTeamId, match.awayTeamId]
+    : isAdmin
+      ? dutTeamIds
+      : teamId && dutTeamIds.includes(teamId)
+        ? [teamId]
+        : []
   if (readTeamIds.length === 0) return null
 
   const [rosters, events, teamPlayerLists, allTeams, reportLists] = await Promise.all([
@@ -213,20 +216,39 @@ export function LiveMatchPage() {
     )
   }
 
+  const isAdminFinals = user?.role === 'admin' && data.match.finalsStatsEnabled === true
   const ownTeamId =
-    data.match.homeTeamId === teamId || data.match.awayTeamId === teamId
-      ? (teamId ?? data.match.homeTeamId)
-      : data.match.homeTeamId
+    isAdminFinals
+      ? data.match.homeTeamId
+      : data.match.homeTeamId === teamId || data.match.awayTeamId === teamId
+        ? (teamId ?? data.match.homeTeamId)
+        : data.match.homeTeamId
 
-  return <LiveMatchCentre key={data.match.id} loaded={data} ownTeamId={ownTeamId} />
+  return (
+    <LiveMatchCentre
+      key={data.match.id}
+      loaded={data}
+      initialOwnTeamId={ownTeamId}
+      adminFinals={isAdminFinals}
+    />
+  )
 }
 
-function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId: string }) {
+function LiveMatchCentre({
+  loaded,
+  initialOwnTeamId,
+  adminFinals,
+}: {
+  loaded: LoadedMatch
+  initialOwnTeamId: string
+  adminFinals: boolean
+}) {
   const { match: initialMatch, rosters, events: initialEvents, players, allTeams, reports } = loaded
   const { user } = useAuth()
   const { toast } = useToast()
   const navigate = useNavigate()
   const [currentRosters, setCurrentRosters] = useState<MatchRoster[]>(rosters)
+  const [ownTeamId, setOwnTeamId] = useState<string>(initialOwnTeamId)
 
   const ownTeam = allTeams.find((team) => team.id === ownTeamId) ?? allTeams[0]!
   const opponentId = initialMatch.homeTeamId === ownTeamId ? initialMatch.awayTeamId : initialMatch.homeTeamId
@@ -274,6 +296,21 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
     }
     return next
   })
+
+  const firstOwnTeamRef = useRef(true)
+  useEffect(() => {
+    if (firstOwnTeamRef.current) {
+      firstOwnTeamRef.current = false
+      return
+    }
+    const next = new Set(
+      currentRosters
+        .filter((entry) => entry.teamId === ownTeamId && entry.isStarter)
+        .map((entry) => entry.playerId),
+    )
+    setOnCourt(next)
+    setSelectedPlayerId(null)
+  }, [ownTeamId])
   const [clockRunning, setClockRunning] = useState(initialMatch.status === 'live')
   const [isOnline, setIsOnline] = useState(() => navigator.onLine)
   const [syncing, setSyncing] = useState(false)
@@ -930,7 +967,7 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
         )}
       >
         <Button asChild variant="ghost" size="sm" className="-ml-2">
-          <Link to="/manager/matches">
+          <Link to={user?.role === 'admin' ? '/admin/matches' : '/manager/matches'}>
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Matches
           </Link>
@@ -970,6 +1007,35 @@ function LiveMatchCentre({ loaded, ownTeamId }: { loaded: LoadedMatch; ownTeamId
           <Badge tone="neutral">{formatDate(initialMatch.tipoff)}</Badge>
         </div>
       </div>
+
+      {adminFinals ? (
+        <Card>
+          <CardContent className="flex flex-wrap items-center gap-2 pt-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+              Recording stats for
+            </p>
+            <Button
+              size="sm"
+              variant={ownTeamId === initialMatch.homeTeamId ? 'primary' : 'secondary'}
+              onClick={() => setOwnTeamId(initialMatch.homeTeamId)}
+              disabled={completed}
+            >
+              {homeTeam.shortName}
+            </Button>
+            <Button
+              size="sm"
+              variant={ownTeamId === initialMatch.awayTeamId ? 'primary' : 'secondary'}
+              onClick={() => setOwnTeamId(initialMatch.awayTeamId)}
+              disabled={completed}
+            >
+              {awayTeam.shortName}
+            </Button>
+            <p className="text-[11px] text-ink-faint">
+              Finals mode — admin only. Switch teams to record player stats for either side.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Scoreboard
         homeTeam={homeTeam}
